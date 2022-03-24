@@ -489,7 +489,7 @@ def main():
 
     # Check for any usage
     if len(sys.argv) == 1:
-        fatal('usage: chicyte [-h] [--version] {run,unlock,cache} ...')
+        fatal('Invalid usage: {} [-h] [--version] ...'.format(_name))
 
     # Collect args for sub-command
     args = parsed_arguments(
