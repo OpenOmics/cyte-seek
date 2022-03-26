@@ -79,7 +79,7 @@ def unlock(sub_args):
     print("Successfully unlocked the pipeline's working directory!")
 
 
-def run(sub_args):
+def cite(sub_args):
     """Initialize, setup, and run the pipeline.
     Calls initialize() to create output directory and copy over pipeline resources,
     setup() to create the pipeline config file, dryrun() to ensure their are no issues
@@ -168,38 +168,182 @@ def parsed_arguments(name, description):
     # Here is a work around to create more useful help message for named
     # options that are required! Please note: if a required arg is added the
     # description below should be updated (i.e. update usage and add new option)
-    required_run_options = textwrap.dedent("""\
-        usage: {} run [--help] \\
-                            [--mode <local,slurm>] \\
-                            [--job-name JOB_NAME] \\
-                            [--dry-run] \\
-                            [--silent] \\
-                            [--singularity-cache SINGULARITY_CACHE] \\
-                            [--sif-cache SIF_CACHE] \\
-                            [--tmpdir TMP_DIR] \\
-                            [--threads THREADS] \\
-                            --input INPUT [INPUT ...] \\
-                            --output OUTPUT
+    required_cite_options = textwrap.dedent("""\
+        Usage: {0} cite [--help] [--mode <local,slurm>] [--job-name JOB_NAME] \\
+                            [ --dry-run] [--silent] [--sif-cache SIF_CACHE] \\ 
+                            [--singularity-cache SINGULARITY_CACHE]  \\
+                            [--tmpdir TMP_DIR] [--threads THREADS] \\
+                            [--pre-rna] [--force-cells] \\
+                            [--num-cells NUM_CELLS] \\
+                             --input INPUT [INPUT ...] \\
+                             --output OUTPUT \\
+                             --genome {{hg38, mm10}} \\
+                             --libraries LIBRARIES \\
+                             --features FEATURES
 
-        required arguments:
+        Required arguments:
           --input INPUT [INPUT ...]
-                                Input FastQ file(s) to process. The pipeline does NOT
+                                Input FastQ files to process.  The pipeline does NOT
                                 support single-end data. FastQ files for one or more  
                                 samples can be provided.
-                                Example: --input .tests/*.R?.fastq.gz
+                                  Example: --input .tests/*.R?.fastq.gz
           --output OUTPUT
                                 Path to an output directory. This location is where
                                 the pipeline will create all of its output files, also
                                 known as the pipeline's working directory. If the user
-                                provided working directory has not been initialized,
+                                provided  working directory  has not been initialized,
                                 it will be created automatically.
-                                Example: --output /data/$USER/output
+                                  Example: --output /data/$USER/output
+          --genome  {{hg38, mm10}}
+                                Reference genome. This option defines the reference
+                                genome of the samples. {0} does comes bundled with
+                                prebuilt reference files for human and mouse samples,
+                                e.g. hg38 or mm10. Please select one of the following 
+                                options: hg38, mm10.
+                                  Example: --genome hg38
+           --libraries LIBRARIES    
+                                Libraries file. A CSV file containing information about
+                                each library. It contains each sample's name, flowcell,
+                                demultiplexed name, and library type.
+                                  Here is an example libraries.csv file:
+                                    Name,Flowcell,Sample,Type
+                                    IL15_LNs,H7CNNBGXG,IL15_LNs,Gene Expression
+                                    IL15_LNs,H7CT7BGXG,IL15_LNs_BC,Antibody Capture
+                                  where:
+                                    • Name: name of the sample passed to CellRanger. 
+                                    • Flowcell: the flowcell that contains the FASTQ 
+                                      files for this set of data.
+                                    • Sample: name that was used when demultiplexing,
+                                      this should match the FASTQ files. 
+                                    • Type: library type for each sample. List of 
+                                      supported options: 
+                                        • Gene Expression
+                                        • CRISPR Guide Capture,
+                                        • Antibody Capture
+                                        • Custom
+                                  Example: --libraries libraries.csv
+            --features FEATURES   
+                                Features file. A feature reference CSV file containing 
+                                information for processing a feature barcode data. This
+                                file should contain a unique ID for the feature, a human 
+                                readable name, sequence, feature type, read, and pattern.
+                                  Here is an example features.csv file:
+                                    id,name,sequence,feature_type,read,pattern
+                                    CITE_CD64,CD64,AGTGGG,Antibody Capture,R2,5PNN(BC)
+                                    CITE_CD8,CD8,TCACCGT,Antibody Capture,R2,5PNNN(BC)
+                                  where:
+                                    • id: Unique ID for this feature. Must not contain 
+                                      whitespace, quote or comma characters. Each ID 
+                                      must be unique and must not collide with a gene 
+                                      identifier from the transcriptome.
+                                    • name: Human-readable name for this feature. Must 
+                                      not contain whitespace.
+                                    • sequence: Nucleotide barcode sequence associated 
+                                      with this feature, e.g. the antibody barcode or
+                                      sgRNA protospacer sequence.
+                                    • read: Specifies which RNA sequencing read contains
+                                      the Feature Barcode sequence. Must be R1 or R2, but
+                                      in most cases R2 is the correct read.
+                                    • pattern: Specifies how to extract the sequence of 
+                                      the feature barcode from the read.
+                                    • Type of the feature. List of supported options:
+                                        • Gene Expression
+                                        • CRISPR Guide Capture,
+                                        • Antibody Capture
+                                        • Custom
+                                  Example: --features libraries.csv
+        
+        Analysis options:
+          --num-cells NUM_CELLS 
+                                Expected number of recovered cells passed to cellranger,
+                                default: 3000.
+                                  Example: --num-cells 4000
+          --force-cells
+                                Force pipeline to use the expected number of cells, which 
+                                will bypass the cell detection algorithm.
+                                  Example: --force-cells
+          --pre-rna             
+                                Use introns for pre mRNA.
+                                 Example: --pre-rna
+                                
 
+        Orchestration options:
+          --mode {{slurm,local}}  
+                                Method of execution. Defines the mode of execution. 
+                                Vaild options for this mode include: local or slurm. 
+                                Additional modes of exection are coming soon, default:  
+                                slurm.
+                                Here is a brief description of each mode:
+                                   local: uses local method of execution. local runs 
+                                will run serially on compute instance. This is useful 
+                                for testing, debugging, or when a users does not have
+                                access to a  high  performance  computing environment.
+                                If this option is not provided, it will default to a 
+                                slurm mode of execution. 
+                                   slurm: uses slurm execution backend. This method 
+                                will submit jobs to a  cluster  using sbatch. It is 
+                                recommended running the pipeline in this mode as it 
+                                will be significantly faster. 
+                                  Example: --mode slurm
+          --job-name JOB_NAME   
+                                Overrides the name of the pipeline's master job. When 
+                                submitting the pipeline to a jobscheduler, this option
+                                overrides the default name of the master job. This can 
+                                be useful for tracking the progress or status of a run, 
+                                default: pl:{0}.
+                                  Example: --job-name {0}_03-14.1592
+          --dry-run             
+                                Does not execute anything. Only displays what steps in
+                                the pipeline remain or will be run.
+                                  Example: --dry-run
+          --silent              
+                                Silence standard output. This will reduces the amount 
+                                of information displayed to standard  output  when the 
+                                master job is submitted to the job scheduler. Only the 
+                                job id of the master job is returned.
+                                  Example: --silent
+          --singularity-cache SINGULARITY_CACHE
+                                Overrides the $SINGULARITY_CACHEDIR variable. Images
+                                from remote registries are cached locally on the file
+                                system. By default, the singularity cache is set to:
+                                '/path/to/output/directory/.singularity/'. Please note
+                                that this cache cannot be shared across users.
+                                  Example: --singularity-cache /data/$USER
+          --sif-cache SIF_CACHE
+                                Path where a local cache of SIFs are stored. This cache
+                                can be shared across users if permissions are properly
+                                setup. If a SIF does not exist in the SIF cache, the
+                                image will be pulled from Dockerhub. The {0} cache
+                                sub command can be used to create a local SIF cache. 
+                                Please see {0} cache for more information.
+                                   Example: --sif-cache /data/$USER/sifs/
+          --tmp-dir TMP_DIR     
+                                Path on the file system for writing temporary output 
+                                files. By default, the temporary directory is set to 
+                                '/lscratch/$SLURM_JOBID' for backwards compatibility 
+                                with the NIH's Biowulf cluster; however, if you are 
+                                running the pipeline on another cluster, this option 
+                                will need to be specified. Ideally, this path should 
+                                point to a dedicated location on the filesystem for 
+                                writing tmp files. On many systems, this location is 
+                                set to somewhere in /scratch. If you need to inject a 
+                                variable into this string that should NOT be expanded, 
+                                please quote this options value in single quotes. 
+                                  Example: --tmp-dir '/scratch/cluster_scratch/$USER/'
+          --threads THREADS     
+                                Max number of threads for local processes. It is
+                                recommended setting this vaule to the maximum number of
+                                CPUs available on the host machine, default: 2.
+                                  Example: --threads: 16
+        
+        Misc Options:
+          -h, --help            Show usage information, help message, and exit.
+                                  Example: --help
         """.format(name))
 
     # Display example usage in epilog
-    run_epilog = textwrap.dedent("""\
-        example:
+    cite_epilog = textwrap.dedent("""\
+        Example:
           # Step 1.) Grab an interactive node,
           # do not run on head node!
           sinteractive --mem=8g --cpus-per-task=4
@@ -207,7 +351,7 @@ def parsed_arguments(name, description):
           module load singularity snakemake
 
           # Step 2A.) Dry-run the pipeline
-          ./{} run --input .tests/*.R?.fastq.gz \\
+          ./{} cite --input .tests/*.R?.fastq.gz \\
                          --output /data/$USER/output\\
                          --mode slurm \\
                          --dry-run
@@ -216,26 +360,29 @@ def parsed_arguments(name, description):
           # The slurm mode will submit jobs to 
           # the cluster. It is recommended running 
           # the pipeline in this mode.
-          ./{} run --input .tests/*.R?.fastq.gz \\
+          ./{} cite --input .tests/*.R?.fastq.gz \\
                          --output /data/$USER/output \\
                          --mode slurm
 
-        version:
+        Version:
           {}
         """.format(name, name, name, __version__))
 
     # Supressing help message of required args to overcome no sub-parser named groups
-    subparser_run = subparsers.add_parser('run',
-        help = 'Run the {} pipeline with input files.'.format(name),
+    subparser_cite = subparsers.add_parser(
+        'cite',
+        help = 'Run the CITE-seq pipeline with input files.'.format(name),
         usage = argparse.SUPPRESS,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description = required_run_options,
-        epilog  = run_epilog
+        description = required_cite_options,
+        epilog  = cite_epilog,
+        add_help=False
     )
 
     # Required Arguments
     # Input FastQ files
-    subparser_run.add_argument('--input',
+    subparser_cite.add_argument(
+        '--input',
         # Check if the file exists and if it is readable
         type = lambda file: permissions(parser, file, os.R_OK),
         required = True,
@@ -243,115 +390,162 @@ def parsed_arguments(name, description):
         help = argparse.SUPPRESS
     )
 
-    # Output Directory (analysis working directory)
-    subparser_run.add_argument('--output',
+    # Output Directory, i. e. the
+    # analysis working directory
+    subparser_cite.add_argument(
+        '--output',
         type = lambda option: os.path.abspath(os.path.expanduser(option)),
         required = True,
         help = argparse.SUPPRESS
     )
 
+    # Execution Method, run locally 
+    # on a compute node, submit to 
+    # SLURM job scheduler, etc.
+    subparser_cite.add_argument(
+        '--genome',
+        type = str,
+        required = True,
+        choices = ['hg38', 'mm10'],
+        help = argparse.SUPPRESS
+    )
+
+    # Input Libraries files for
+    # cellranger count 
+    subparser_cite.add_argument(
+        '--libraries',
+        # Check if the file exists and if it is readable
+        type = lambda file: permissions(parser, file, os.R_OK),
+        required = True,
+        help = argparse.SUPPRESS
+    )
+
+    # Input Libraries files
+    subparser_cite.add_argument(
+        '--features',
+        # Check if the file exists and if it is readable
+        type = lambda file: permissions(parser, file, os.R_OK),
+        required = True,
+        help = argparse.SUPPRESS
+    )
+
     # Optional Arguments
-    # Execution Method (run locally on a compute node, submit to SLURM job scheduler, etc.)
-    subparser_run.add_argument('--mode',
+    # Add custom help message
+    subparser_cite.add_argument(
+        '-h', '--help', 
+        action='help', 
+        help=argparse.SUPPRESS
+    )
+    
+    # Analysis options
+    # Expected number of cells
+    subparser_cite.add_argument(
+        '--num-cells',
+        type = int,
+        required = False,
+        default = 3000,
+        help = argparse.SUPPRESS
+    )
+
+    # Use introns for pre mRNA
+    subparser_cite.add_argument(
+        '--pre-rna',
+        action = 'store_true',
+        required = False,
+        default = False,
+        help = argparse.SUPPRESS
+    )
+
+    # Force cell number
+    subparser_cite.add_argument(
+        '--force-cells',
+        action = 'store_true',
+        required = False,
+        default = False,
+        help = argparse.SUPPRESS
+    )
+
+    # Execution Method, run locally 
+    # on a compute node, submit to 
+    # SLURM job scheduler, etc.
+    subparser_cite.add_argument(
+        '--mode',
         type = str,
         required = False,
         default = "slurm",
         choices = ['slurm', 'local'],
-        help = 'Execution Method [Default: slurm]. Defines the mode or method of execution. \
-        Vaild mode options include: local or slurm. \
-        local: uses local method of execution. local executions will run serially on \
-        compute instance. This is useful for testing, debugging, or when a users does \
-        not have access to a high performance computing environment. If this option is \
-        not provided, it will default to a local execution mode. \
-        slurm: uses slurm and singularity backend. The slurm execution method will submit \
-        jobs to a cluster. It is recommended running {} in this mode as execution \
-        will be significantly faster in a distributed environment. \
-        Example: --mode slurm'.format(name)
+        help = argparse.SUPPRESS
     )
 
     # Name of master job
-    subparser_run.add_argument('--job-name',
+    subparser_cite.add_argument(
+        '--job-name',
         type = str,
         required = False,
         default = 'pl:{}'.format(name),
-        help = 'Set the name of the pipeline\'s master job. \
-        When submitting the pipeline to a job scheduler, like SLURM, \
-        this option always you to set the name of the pipeline\'s master \
-        job. By default, the name of the pipeline\'s master job \
-        is set to "pl:{}". \
-        Example: --job-name {}_main'.format(name, name)
+        help = argparse.SUPPRESS
     )
 
-    # Dry-run (do not execute the workflow, prints what steps remain)
-    subparser_run.add_argument('--dry-run',
+    # Dry-run pipeline, do not 
+    # execute the workflow, 
+    # prints what steps remain
+    subparser_cite.add_argument(
+        '--dry-run',
         action = 'store_true',
         required = False,
         default = False,
-        help = 'Do not execute anything, and only display what steps in the pipeline remain or \
-        will be run.'
+        help = argparse.SUPPRESS
     )
 
     # Silent output mode
-    subparser_run.add_argument('--silent',
+    subparser_cite.add_argument(
+        '--silent',
         action = 'store_true',
         required = False,
         default = False,
-        help = 'Silence standard output. Reduces the amount of information directed \
-        to standard output when submitting master job to the job scheduler. Only the \
-        job id of the master job is returned.'
+        help = argparse.SUPPRESS
     )
     
-    # Singularity cache directory (default uses output directory)
-    subparser_run.add_argument('--singularity-cache',
-        type = lambda option: check_cache(parser, os.path.abspath(os.path.expanduser(option))),
-        required = False,
-        help = 'Overrides the $SINGULARITY_CACHEDIR environment variable. Singularity will cache \
-        image layers pulled from remote registries. By default, the cache is set to \
-        \'/path/to/output/directory/.singularity/\'. \
-        Please note that this cache cannot be shared across users.'
-    )
-    
-    # Local SIF cache directory (default pull from Dockerhub) 
-    subparser_run.add_argument('--sif-cache',
+    # Local SIF cache directory,
+    # default pull from Dockerhub
+    subparser_cite.add_argument(
+        '--sif-cache',
         type = lambda option: os.path.abspath(os.path.expanduser(option)),
         required = False,
-        help = 'Path where a local cache of SIFs are stored. \
-        This cache can be shared across users if permissions are \
-        set correctly. If a SIF does not exist in the SIF cache, \
-        the image will be pulled from Dockerhub. The {} cache \
-        subcommand can be used to create a local SIF cache. Please see \
-        {} cache for more information.'.format(name, name)
+        help = argparse.SUPPRESS
     )
 
-    # Base directory to write temporary files 
-    subparser_run.add_argument('--tmp-dir',
+    # Singularity cache directory
+    # default uses output directory
+    subparser_cite.add_argument(
+        '--singularity-cache',
+        type = lambda option: check_cache(parser, os.path.abspath(os.path.expanduser(option))),
+        required = False,
+        help = argparse.SUPPRESS
+    )
+    
+    # Base directory to write 
+    # temporary output files 
+    subparser_cite.add_argument(
+        '--tmp-dir',
         type = str,
         required = False,
         default = '/lscratch/$SLURM_JOBID/',
-        help = 'Path on the filesystem for writing intermediate, temporary output \
-        files. By default, this variable is set to \'/lscratch/$SLURM_JOBID\' \
-        for backwards compatibility with the NIH\'s Biowulf cluster; however, \
-        if you are running the pipeline on another cluster, this option will \
-        need to be specified. Ideally, this path should point to a dedicated \
-        location on the filesystem for writing tmp files. On many systems, this \
-        location is set to somewhere in /scratch. If you need to inject a variable \
-        into this string that should NOT be expanded, please quote this options \
-        value in single quotes. As an example, on the NCI/NIH FRCE cluster the \
-        value of this option would be set to \
-        --tmp-dir \'/scratch/cluster_scratch/$USER/\', \
-        default:  \'/lscratch/$SLURM_JOBID/\''
+        help = argparse.SUPPRESS
     )
 
-    # Number of threads for the pipeline's main proceess
-    # This is only applicable for local rules or when the 
-    # pipeline is running in local mode.
-    subparser_run.add_argument('--threads',
+    # Number of threads for the 
+    # pipeline's main proceess
+    # This is only applicable 
+    # for local rules or when 
+    # the pipeline is running 
+    # in local mode.
+    subparser_cite.add_argument(
+        '--threads',
         type = int,
         required = False,
         default = 2,
-        help = 'Max number of threads for local processes. It is recommended \
-        setting this vaule to the maximum number of CPUs available on the host \
-        machine, default: 2.'
+        help = argparse.SUPPRESS
     )
 
     # Sub-parser for the "unlock" sub-command
@@ -361,7 +555,7 @@ def parsed_arguments(name, description):
     # options that are required! Please note: if a required arg is added the
     # description below should be updated (i.e. update usage and add new option)
     required_unlock_options = textwrap.dedent("""\
-        usage: {} unlock [-h] --output OUTPUT
+        Usage: {} unlock [-h] --output OUTPUT
 
         If the pipeline fails ungracefully, it maybe required to unlock the working
         directory before proceeding again. Please verify that the pipeline is not
@@ -369,23 +563,23 @@ def parsed_arguments(name, description):
         workflow manager will report the working directory is locked. This is normal
         behavior. Do NOT run this command if the pipeline is still running.
 
-        required arguments:
+        Required arguments:
           --output OUTPUT
                                 Path to a previous run's output directory to
                                 unlock. This will remove a lock on the working 
                                 directory. Please verify that the pipeline is 
                                 not running before running this command.
-                                Example: --output /data/$USER/output
+                                  Example: --output /data/$USER/output
 
         """.format(name))
 
     # Display example usage in epilog
     unlock_epilog = textwrap.dedent("""\
-        example:
+        Example:
           # Unlock output directory of pipeline
           {} unlock --output /scratch/$USER/output
 
-        version:
+        Version:
           {}
         """.format(name, __version__))
 
@@ -413,7 +607,7 @@ def parsed_arguments(name, description):
     # options that are required! Please note: if a required arg is added the
     # description below should be updated (i.e. update usage and add new option)
     required_cache_options = textwrap.dedent("""\
-        usage: {} cache [-h] [-n] --sif-cache SIF_CACHE
+        Usage: {} cache [-h] [-n] --sif-cache SIF_CACHE
 
         Creates a local cache resources hosted on DockerHub or AWS S3.
         These resources are normally pulled onto the filesystem when the
@@ -425,27 +619,24 @@ def parsed_arguments(name, description):
         issue, the cache subcommand can be used to create local SIFs on
         the filesystem from images on DockerHub.
 
-        required arguments:
+        Required arguments:
           --sif-cache SIF_CACHE
                       Path where a local cache of SIFs will be stored.
                       Images defined in config/containers/images.json
                       will be pulled into the local filesystem. The
                       path provided to this option can be passed to
-                      the --sif-cache option of the run sub command.
-                      Please see {} run sub command for more
-                      information.
-
-                      Example: --sif-cache /scratch/$USER/cache
+                      the --sif-cache option of the other commands.
+                        Example: --sif-cache /scratch/$USER/cache
 
         """.format(name, name))
 
     # Display example usage in epilog
     cache_epilog = textwrap.dedent("""\
-        example:
+        Example:
           # Cache remote resources of pipeline
           {} cache --sif-cache /scratch/$USER/cache
 
-        version:
+        Version:
           {}
         """.format(name, __version__))
 
@@ -476,7 +667,7 @@ def parsed_arguments(name, description):
     )
 
     # Define handlers for each sub-parser
-    subparser_run.set_defaults(func = run)
+    subparser_cite.set_defaults(func = cite)
     subparser_unlock.set_defaults(func = unlock)
     subparser_cache.set_defaults(func = cache)
 
