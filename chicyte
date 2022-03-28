@@ -169,7 +169,7 @@ def parsed_arguments(name, description):
     # options that are required! Please note: if a required arg is added the
     # description below should be updated (i.e. update usage and add new option)
     required_cite_options = textwrap.dedent("""\
-        Usage: {0} cite [--help] [--mode <local,slurm>] [--job-name JOB_NAME] \\
+        Usage: {0} cite [--help] [--mode {{local,slurm}}] [--job-name JOB_NAME] \\
                             [ --dry-run] [--silent] [--sif-cache SIF_CACHE] \\ 
                             [--singularity-cache SINGULARITY_CACHE]  \\
                             [--tmpdir TMP_DIR] [--threads THREADS] \\
@@ -177,7 +177,7 @@ def parsed_arguments(name, description):
                             [--num-cells NUM_CELLS] \\
                              --input INPUT [INPUT ...] \\
                              --output OUTPUT \\
-                             --genome {{hg38, mm10}} \\
+                             --genome {{hg38,mm10}} \\
                              --libraries LIBRARIES \\
                              --features FEATURES
 
@@ -194,7 +194,7 @@ def parsed_arguments(name, description):
                                 provided  working directory  has not been initialized,
                                 it will be created automatically.
                                   Example: --output /data/$USER/output
-          --genome  {{hg38, mm10}}
+          --genome  {{hg38,mm10}}
                                 Reference genome. This option defines the reference
                                 genome of the samples. {0} does comes bundled with
                                 prebuilt reference files for human and mouse samples,
@@ -262,7 +262,7 @@ def parsed_arguments(name, description):
                                 Force pipeline to use the expected number of cells, which 
                                 will bypass the cell detection algorithm.
                                   Example: --force-cells
-          --pre-rna             
+          --pre-mrna             
                                 Use introns for pre mRNA.
                                  Example: --pre-rna
                                 
@@ -449,7 +449,7 @@ def parsed_arguments(name, description):
 
     # Use introns for pre mRNA
     subparser_cite.add_argument(
-        '--pre-rna',
+        '--pre-mrna',
         action = 'store_true',
         required = False,
         default = False,
