@@ -10,15 +10,113 @@ from snakemake.utils import R
 # Local imports
 from scripts.common import (
     provided, 
-    references
+    references,
+    str_bool
 )
 
+# Set deafult interpret 
+# for shell directive 
+shell.executable("/bin/bash")
+
+# Global workflow variables
+configfile: 'config.json'
+samples  = config['samples']                   # Base name of input samples
+inputs = config['options']['input']            # List of raw input files
+workpath = config['project']['workpath']       # Pipeline's output directory 
+tmpdir = config['options']['tmp_dir']          # Temporary directory
+genome = config['options']['genome']           # User selected reference genome
+features = config['options']['features']       # Features files for cellranger
+libraries = config['options']['libraries']     # Libraries files for cellranger
+num_cells = config['options']['num_cells']     # Expected number of recovered cells
+pre_mrna = str_bool(                           # Use introns for pre mRNA,
+    config['options']['pre_mrna']              # default: False
+)
+force_cells = str_bool(                        # Force use the expected number of cells,
+    config['options']['force_cells']           # default: False
+ )
+
+# Create a dictionary to map each sample
+# to its expected number of cell counts
+s2c = {}
+expected_counts = []
+if type(num_cells) == list:
+    expected_counts = num_cells
+elif type(num_cells) == str:
+    if ',' in num_cells:
+        # Split multiple values on delimeter
+        expected_counts = num_cells.split(',')
+        expected_counts = [c.strip() for c in expected_counts]
+    elif ' ' in num_cells:
+        # Split multiple values on delimeter
+        expected_counts = num_cells.split(' ')
+        expected_counts = [c.strip() for c in expected_counts]
+    else:
+        # Only one value provided, set that 
+        # as the default for each sample
+        expected_counts = [num_cells] * len(samples)
+
+# Sanity check to see if each 
+# sample has an expected count
+if len(expected_counts) != len(samples):
+    raise ValueError(
+        'Error: Length of list for the expected \
+        number of cells does not match the length \
+        of the list matching to the number of samples!'
+    )
+
+# Assumes that each index in the list matches the 
+# same order of samples they proived at runtime,
+# i.e. match the order of config['samples'] OR 
+# config['options']['inputs'].
+for i in range(len(expected_counts)):
+    sample = samples[i]
+    # Dictionary to map sample to cell count
+    s2c[sample] = int(expected_counts[i])
+
+# Get set of input paths
+input_paths = [os.path.dirname(p) for p in inputs]
+input_paths_set = []
+for p in input_paths:
+    if not p in input_paths_set:
+        input_paths_set.append(p)
+
+# Read in resource information,
+# containing information about 
+# threads, mem, walltimes, etc.
+# TODO: Add handler for when the
+# mode is set to local.
+with open(join('config', 'cluster.json')) as fh:
+    cluster = json.load(fh)
 
 # Final ouput files of the pipeline
 rule all:
     input:
-        []
+        # Single sample libraries files
+        # for cellranger count
+        # @imported from rules/cite.smk
+        expand(
+            join(workpath, "{sample}_libraries.csv"), 
+            sample=samples
+        ),
+        # CellRanger counts, summary report
+        # @imported from rules/cite.smk 
+        expand(
+            join(workpath, "{sample}", "outs", "web_summary.html"), 
+            sample=samples
+        ),
+        # Generate Summaries File, summary report
+        # @imported from rules/cite.smk
+        expand(
+            join(workpath, "finalreport", "summaries", "{sample}_web_summary.html"), 
+            sample=samples
+        ),
+        # Aggregated CSV, aggregated dataset
+        # @imported from rules/cite.smk
+        join(workpath, "AggregatedDatasets.csv"),
+        # CellRanger agg, aggregated dataset
+        join(workpath, 'aggregate.complete'),
 
 
-# Import rules 
-include: join("rules", "common.smk")
+# Import rules
+include: join("rules", "common.smk") # Rules common to all pipelines
+include: join("rules", "cite.smk")   # Rules for processing CITE-seq data
