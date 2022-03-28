@@ -1,6 +1,8 @@
 {
     "tools": {
-        "cellranger": "cellranger/6.0.1"
+        "cellranger": "cellranger/6.0.1",
+        "python2": "python/2.7",
+        "python3": "python/3.8"
     },
     "conda": {
         
