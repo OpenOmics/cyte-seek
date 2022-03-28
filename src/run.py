@@ -621,7 +621,7 @@ def dryrun(outdir, config='config.json', snakefile=os.path.join('workflow', 'Sna
             # Failure caused by unknown cause, raise error
             raise e
     except subprocess.CalledProcessError as e:
-        print(e, e.output)
+        print(e, e.output.decode("utf-8"))
         raise(e)
 
     return dryrun_output
