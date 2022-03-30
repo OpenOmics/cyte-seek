@@ -1,10 +1,10 @@
 {
     "references": {
         "hg38": {
-            "transcriptome": "/path/to/placeholder/until/install/refdata-gex-GRCh38-2020-A"
+            "transcriptome": "/data/NCBR/references/chicyte/refdata-gex-GRCh38-2020-A/"
         },
         "mm10": {
-            "transcriptome": "/path/to/placeholder/until/install/refdata-gex-mm10-2020-A"
+            "transcriptome": "/fake/path/to/placeholder/until/install/refdata-gex-mm10-2020-A"
         }
     }
 }
