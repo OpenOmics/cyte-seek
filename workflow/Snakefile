@@ -21,6 +21,7 @@ shell.executable("/bin/bash")
 # Global workflow variables
 configfile: 'config.json'
 samples  = config['samples']                   # Base name of input samples
+lib_samples = list(config['libraries'].keys()) # Libraries file samples
 inputs = config['options']['input']            # List of raw input files
 workpath = config['project']['workpath']       # Pipeline's output directory 
 tmpdir = config['options']['tmp_dir']          # Temporary directory
@@ -35,7 +36,7 @@ force_cells = str_bool(                        # Force use the expected number o
     config['options']['force_cells']           # default: False
  )
 
-# Create a dictionary to map each sample
+# Create a dictionary to map each lib_sample
 # to its expected number of cell counts
 s2c = {}
 expected_counts = []
@@ -53,23 +54,23 @@ elif type(num_cells) == str:
     else:
         # Only one value provided, set that 
         # as the default for each sample
-        expected_counts = [num_cells] * len(samples)
+        expected_counts = [num_cells] * len(lib_samples)
 
 # Sanity check to see if each 
 # sample has an expected count
-if len(expected_counts) != len(samples):
+if len(expected_counts) != len(lib_samples):
     raise ValueError(
-        'Error: Length of list for the expected \
-        number of cells does not match the length \
-        of the list matching to the number of samples!'
+        '\n └── Fatal: Length of list for the expected '
+        'number of cells does not match the number '
+        'of samples in the libraries file!'
     )
 
 # Assumes that each index in the list matches the 
-# same order of samples they proived at runtime,
-# i.e. match the order of config['samples'] OR 
-# config['options']['inputs'].
+# same order of lib_samples they provided at in the
+# libraries csv file, i.e. it should match the order 
+# of config['libraries'].keys()
 for i in range(len(expected_counts)):
-    sample = samples[i]
+    sample = lib_samples[i]
     # Dictionary to map sample to cell count
     s2c[sample] = int(expected_counts[i])
 
@@ -96,19 +97,19 @@ rule all:
         # @imported from rules/cite.smk
         expand(
             join(workpath, "{sample}_libraries.csv"), 
-            sample=samples
+            sample=lib_samples
         ),
         # CellRanger counts, summary report
         # @imported from rules/cite.smk 
         expand(
             join(workpath, "{sample}", "outs", "web_summary.html"), 
-            sample=samples
+            sample=lib_samples
         ),
         # Generate Summaries File, summary report
         # @imported from rules/cite.smk
         expand(
             join(workpath, "finalreport", "summaries", "{sample}_web_summary.html"), 
-            sample=samples
+            sample=lib_samples
         ),
         # Aggregated CSV, aggregated dataset
         # @imported from rules/cite.smk

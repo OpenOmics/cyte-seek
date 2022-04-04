@@ -11,6 +11,7 @@ def count_premrna(wildcards):
     else:
         return('')
 
+
 def count_expect_force(wildcards):
     """
     Wrapper to decide whether to force the expected number of cells.
@@ -25,7 +26,7 @@ def count_expect_force(wildcards):
 # Rule definitions
 rule librariesCSV:
     output: 
-        expand(join(workpath, "{sample}_libraries.csv"), sample=samples)
+        expand(join(workpath, "{sample}_libraries.csv"), sample=lib_samples)
     params: 
         rname = "libcsv",
         fastq = ",".join(input_paths_set),
@@ -79,10 +80,10 @@ rule count:
 
 rule summaryFiles:
     input: 
-        expand(join(workpath, "{sample}", "outs", "web_summary.html"), sample=samples)
+        expand(join(workpath, "{sample}", "outs", "web_summary.html"), sample=lib_samples)
     output: 
         join(workpath, "finalreport", "metric_summary.xlsx"),
-        expand(join(workpath, "finalreport", "summaries", "{sample}_web_summary.html"), sample=samples)
+        expand(join(workpath, "finalreport", "summaries", "{sample}_web_summary.html"), sample=lib_samples)
     params: 
         rname = "sumfile",
         batch = "-l nodes=1:ppn=1",
@@ -95,7 +96,7 @@ rule summaryFiles:
 
 rule aggregateCSV:
     input: 
-        expand(join(workpath, "{sample}", "outs", "web_summary.html"), sample=samples)
+        expand(join(workpath, "{sample}", "outs", "web_summary.html"), sample=lib_samples)
     output: 
         join(workpath, "AggregatedDatasets.csv"),
     params: 
