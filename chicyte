@@ -99,7 +99,8 @@ def cite(sub_args):
     input_files = init(
         repo_path = git_repo,
         output_path = sub_args.output,
-        links = sub_args.input
+        links = sub_args.input,
+        sym_link = False
     )
 
     # Step 2. Setup pipeline for execution, 

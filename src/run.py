@@ -17,7 +17,7 @@ from utils import (git_commit_hash,
 from . import version as __version__
 
 
-def init(repo_path, output_path, links=[], required=['workflow', 'resources', 'config']):
+def init(repo_path, output_path, links=[], required=['workflow', 'resources', 'config'], sym_link = True):
     """Initialize the output directory. If user provides a output
     directory path that already exists on the filesystem as a file 
     (small chance of happening but possible), a OSError is raised. If the
@@ -50,7 +50,7 @@ def init(repo_path, output_path, links=[], required=['workflow', 'resources', 'c
 
     # Create renamed symlinks for each rawdata 
     # file provided as input to the pipeline
-    inputs = sym_safe(input_data = links, target = output_path)
+    inputs = sym_safe(input_data = links, target = output_path, link = sym_link)
 
     return inputs
 
@@ -74,7 +74,7 @@ def copy_safe(source, target, resources = []):
             copytree(os.path.join(source, resource), destination)
 
 
-def sym_safe(input_data, target):
+def sym_safe(input_data, target, link):
     """Creates re-named symlinks for each FastQ file provided
     as input. If a symlink already exists, it will not try to create a new symlink.
     If relative source PATH is provided, it will be converted to an absolute PATH.
@@ -88,10 +88,20 @@ def sym_safe(input_data, target):
     input_fastqs = [] # store renamed fastq file names
     for file in input_data:
         filename = os.path.basename(file)
-        renamed = os.path.join(target, rename(filename))
+        try:
+            renamed = rename(filename)
+            renamed = os.path.join(target, renamed)
+        except NameError as e:
+            if not link:
+                # Don't care about creating the symlinks
+                err('Warning: Skipping over provided input {} file.'.format(filename))
+                continue # goto next file
+            else:
+                raise e
+
         input_fastqs.append(renamed)
 
-        if not exists(renamed):
+        if not exists(renamed) and link:
             # Create a symlink if it does not already exist
             # Follow source symlinks to resolve any binding issues
             os.symlink(os.path.abspath(os.path.realpath(file)), renamed)
@@ -437,6 +447,86 @@ def add_sample_metadata(input_files, config, group=None):
     return config
 
 
+def parse_libraries(config, libraries_file, delimeter = ','):
+    """Adds sample information from the libraries 
+    file. The libraries file is a CSV file containing 
+    information about each library. It contains each 
+    sample's name, flowcell, demultiplexed name, and 
+    library type. The relationship between samples 
+    provided to the --input option and samples listed 
+    in the libraries file is 1:many. This is because 
+    you can have a set of FastQ file for different 
+    single-cell applications, like Gene Expression and 
+    Antibody Capture, etc.
+    @params config <dict>:
+        Config dictionary containing metadata to run pipeline
+    @params libraries_file <string>:
+        10x libraries file containing information about each library
+    @return config <dict>:
+         Updated config dictionary containing library file information
+         (Name, Flowcell)
+    """
+    def _require(fields, d, lib):
+        """Private function that checks to see if all required fields
+        are provided in the libraries file. If nan item in fields does 
+        not  exist in d, then the user forget to add this required field.
+        """
+        missing = []
+        for f in fields:
+            try:
+                i = d[f]
+            except KeyError:
+                missing.append(f)
+                pass 
+        if missing:
+            fatal(
+                "Error: Missing required fields in --libraries {} file!\n \
+                └── Please add information for the following field(s): {}".format(
+                    lib,
+                    ','.join([f.title() for f in missing])
+                )
+            )
+        
+        return 
+
+    config['libraries'] = {}
+    # Get file extension to determine 
+    # the appropriate file delimeter
+    extension = os.path.splitext(libraries_file)[-1].lower()
+    if extension in ['.tsv', '.txt', '.text', '.tab']:
+        # file is tab seperated
+        delimeter = '\t'
+    # Find index of file dynamically,
+    # makes it so the order of the 
+    # columns does not matter
+    indices = {} 
+    with open(libraries_file) as fh:
+        try:
+            header = next(fh).strip().split(delimeter)
+        except StopIteration:
+            fatal(
+                'Error: --libraries {} cannot be empty!\n \
+            └── Please ensure the file is not empty before proceeding again.'.format(libraries_file)
+            )
+        for i in range(len(header)):
+            colname = header[i].strip().lower()
+            indices[colname] = i
+        _require(['name', 'flowcell', 'sample', 'type'], indices, libraries_file)
+        for line in fh:
+            linelist = line.strip().split(delimeter)
+            # Get indices of fields and 
+            # parse value in file
+            i_name = indices['name']
+            name = linelist[i_name]
+            i_flowcell = indices['flowcell']
+            flowcell = linelist[i_flowcell]
+            if name not in config['libraries']:
+                config['libraries'][name] = []
+            config['libraries'][name].append(flowcell)
+
+    return config
+
+
 def add_rawdata_information(sub_args, config, ifiles):
     """Adds information about rawdata provided to pipeline.
     Determines whether the dataset is paired-end or single-end and finds the set of all
@@ -466,7 +556,15 @@ def add_rawdata_information(sub_args, config, ifiles):
     config['project']['datapath'] = ','.join(rawdata_paths)
 
     # Add each sample's basename
+    # from the list of supplied 
+    # FastQ files provided via 
+    # the --input option
     config = add_sample_metadata(input_files = ifiles, config = config)
+    # Add the list of samples
+    # provided in the libraries
+    # file, i.e. libraries.csv
+    libraries = sub_args.libraries
+    config = parse_libraries(config = config, libraries_file = libraries)
 
     return config
 
