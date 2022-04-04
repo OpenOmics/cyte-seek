@@ -41,6 +41,8 @@ def main(raw_args=None):
             if args.fastqs != None:
                 runs = [path for path in fastqs if values[0] in path]
                 if len(runs) != 1:
+                    runs = [run for run in runs if values[1] in run]
+                if len(runs) != 1:
                     sys.exit("Problems finding unique match for %s in %s" % (values[0], args.fastqs))
                 else:
                     text.append(",".join([runs[0], values[1], values[2]]))
