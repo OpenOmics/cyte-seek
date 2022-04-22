@@ -116,7 +116,10 @@ rule all:
         join(workpath, "AggregatedDatasets.csv"),
         # CellRanger agg, aggregated dataset
         join(workpath, 'aggregate.complete'),
-
+        expand(
+            join(workpath, "seurat", "{sample}", "seur_cite_cluster.rds"),
+            sample=lib_samples
+        ),
 
 # Import rules
 include: join("rules", "common.smk") # Rules common to all pipelines

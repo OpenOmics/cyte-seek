@@ -1,0 +1,325 @@
+---
+title: "Sample `r params$sample` PreProcessing"
+output: html_document
+params: 
+  workdir: seurat
+  data_path: 10x_output
+  sample: sample_name
+  genome: ref
+---
+
+
+## R Markdown
+
+```{r Packages, message=FALSE}
+library(Seurat)
+library(dplyr)
+library(MAST)
+library(ggplot2)
+library(gridExtra)
+library(RColorBrewer)
+# library(scater)
+```
+
+
+#### Input Parameters
+```{r Input, include=FALSE}
+workdir <- params$workdir
+data_path <- params$data_path
+sample <- params$sample
+genome <- params$genome
+```
+Working Directory: `r workdir`
+
+Input Data Path: `r data_path`
+
+Sample Name: `r sample`
+
+Reference Genome: `r genome`
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=5, dpi=300, fig.retina=1, fig.path=paste0(workdir, '/Figures/'),
+                      echo=FALSE, warning=FALSE, message=FALSE, results='hide')
+```
+
+```{r Load Data}
+rdata <- Read10X(data_path)
+#rdata <- readRDS(data_path)
+```
+
+```{r Create Working Directory, include=FALSE}
+dir.create(workdir, recursive=TRUE)
+```
+
+```{r Change Working Directory, include=FALSE}
+knitr::opts_knit$set(root.dir = workdir)
+```
+
+```{r}
+getwd()
+```
+
+```{r Create Seurat Object}
+seur <- CreateSeuratObject(counts=rdata$`Gene Expression`, project = sample)
+
+adt_assay <- CreateAssayObject(counts=rdata$`Antibody Capture`)
+seur[["ADT"]] <- adt_assay
+```
+
+```{r Calculate Mitochondrial Percentage}
+if (genome == "mm10") {
+  seur[["percent.mito"]] <- PercentageFeatureSet(seur, pattern="^mt-")
+} else if (genome == "hg19" | genome == "hg38") {
+  seur[["percent.mito"]] <- PercentageFeatureSet(seur, pattern="^MT-")
+}
+```
+
+## Pre-Filter QC Plots {.tabset}
+
+### Per Cell Gene Scatter Plots 
+```{r PreFilter Gene Plot Plot, echo=FALSE, message=FALSE, results="hide", fig.width=10, fig.height=5}
+plot1 <- FeatureScatter(seur, feature1 = "nCount_RNA", feature2 = "percent.mito") + NoLegend()
+plot2 <- FeatureScatter(seur, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + NoLegend()
+
+png("PreFilter_Gene_Plot.png", height=5, width=10, units='in', res=300)
+plot1+plot2
+dev.off()
+plot1+plot2
+```
+
+```{r Get Filtering Thresholds}
+#Filtering
+nFeature_RNA_low <- median(log1p(seur$nFeature_RNA)) - 3*mad(log1p(seur$nFeature_RNA))
+nFeature_RNA_high <- median(log1p(seur$nFeature_RNA)) + 3*mad(log1p(seur$nFeature_RNA))
+nCount_RNA_low <- median(log1p(seur$nCount_RNA)) - 3*mad(log1p(seur$nCount_RNA))
+nCount_RNA_high <- median(log1p(seur$nCount_RNA)) + 3*mad(log1p(seur$nCount_RNA))
+mt_high = median(log1p(seur$percent.mito)) + 3*mad(log1p(seur$percent.mito))
+
+nFeature_ADT_low <- median(log1p(seur$nFeature_ADT)) - 3*mad(log1p(seur$nFeature_ADT))
+nFeature_ADT_high <- median(log1p(seur$nFeature_ADT)) + 3*mad(log1p(seur$nFeature_ADT))
+nCount_ADT_low <- median(log1p(seur$nCount_ADT)) - 3*mad(log1p(seur$nCount_ADT))
+nCount_ADT_high <- median(log1p(seur$nCount_ADT)) + 3*mad(log1p(seur$nCount_ADT))
+```
+
+```{r Get Cells to Remove}
+cellsToRemove.Feature_RNA <- colnames(seur)[which(log1p(seur$nFeature_RNA) < nFeature_RNA_low | log1p(seur$nFeature_RNA) > nFeature_RNA_high)]
+cellsToRemove.Count_RNA <- colnames(seur)[which(log1p(seur$nCount_RNA) < nCount_RNA_low | log1p(seur$nCount_RNA) > nCount_RNA_high)]
+cellsToRemove.mito <- colnames(seur)[which(log1p(seur$percent.mito) > mt_high)]
+
+#cellsToRemove.Feature_ADT <- colnames(seur)[which(log1p(seur$nFeature_ADT) < nFeature_ADT_low | log1p(seur$nFeature_ADT) > nFeature_ADT_high)]
+cellsToRemove.Count_ADT <- colnames(seur)[which(log1p(seur$nCount_ADT) > nCount_ADT_high)]
+```
+
+### RNA Violin Plots
+```{r Pre-Filter RNA Violin Plot, warning=FALSE, message=FALSE, results="hide", fig.height=7}
+##Pre-Filter Violin Plot
+plot1 <- VlnPlot(seur, features = c("nFeature_RNA")) + NoLegend() + geom_hline(yintercept=exp(nFeature_RNA_low)-1,linetype="dashed") + geom_hline(yintercept=exp(nFeature_RNA_high)-1,linetype="dashed")
+plot2 <- VlnPlot(seur, features = "nCount_RNA") + NoLegend() + geom_hline(yintercept=exp(nCount_RNA_low)-1,linetype="dashed") + geom_hline(yintercept=exp(nCount_RNA_high)-1,linetype="dashed")
+plot3 <- VlnPlot(seur, features = "percent.mito", ncol = 3) + NoLegend() + geom_hline(yintercept=exp(mt_high)-1,linetype="dashed")
+
+png("PreFilter_VlnPlot_RNA.png", height=7, width=7, units='in', res=300)
+grid.arrange(plot1, plot2, plot3, nrow=1)
+dev.off()
+grid.arrange(plot1, plot2, plot3, nrow=1)
+```
+
+### ADT Violin Plots
+``` {r Pre-Filter ADT Violin Plot, warning=FALSE, message=FALSE, results="hide", fig.width=5, fig.height=7, out.width="70%"}
+plot1 <- VlnPlot(seur, features = c("nFeature_ADT")) + NoLegend() 
+plot2 <- VlnPlot(seur, features = "nCount_ADT") + NoLegend() + geom_hline(yintercept=exp(nCount_ADT_high)-1,linetype="dashed") 
+
+png("PreFilter_VlnPlot_ADT.png", height=7, width=5, units='in', res=300)
+grid.arrange(plot1, plot2, nrow=1)
+dev.off()
+grid.arrange(plot1, plot2, nrow=1)
+```
+
+## Cell Filter Thresholds
+
+RNA Gene Count Thresholds: (`r sprintf("%.2f", exp(nFeature_RNA_low)-1)`, `r sprintf("%.2f",  exp(nFeature_RNA_high)-1)`)
+
+RNA Read Count Thresholds: (`r sprintf("%.2f", exp(nCount_RNA_low)-1)`, `r sprintf("%.2f", exp(nCount_RNA_high)-1)`)
+
+Mitochondrial Percentage Upper Threshold: `r sprintf("%.2f", exp(mt_high)-1)`
+
+ADT Read Count Upper Threshold: `r sprintf("%.2f", exp(nCount_ADT_high)-1)`
+
+```{r Subset Cells}
+seur <- subset(seur, cells = unique(c(cellsToRemove.Feature_RNA, cellsToRemove.Count_RNA, cellsToRemove.mito, cellsToRemove.Count_ADT)), inver=T)
+```
+
+## Post-Filter QC Plots {.tabset}
+### Per Cell Gene Scatter Plots 
+```{r Post-Filter Gene Plot, echo=FALSE, warning=FALSE, message=FALSE, results="hide", fig.width=10, fig.height=5}
+#Post-Filter Plots
+plot1 <- FeatureScatter(seur, feature1 = "nCount_RNA", feature2 = "percent.mito")
+plot2 <- FeatureScatter(seur, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+png("PostFilter_Gene_Plot.png", height=7, width=10, units='in', res=300)
+plot1+plot2
+dev.off()
+plot1+plot2
+```
+
+### RNA Violin Plots
+```{r Post-Filter RNA Violin Plot, results="hide", fig.height=7}
+png("PostFilter_VlnPlot_RNA.png", height=7, width=7, units='in', res=300)
+VlnPlot(seur, features = c("nFeature_RNA", "nCount_RNA", "percent.mito"), ncol = 3)
+dev.off()
+VlnPlot(seur, features = c("nFeature_RNA", "nCount_RNA", "percent.mito"), ncol = 3)
+```
+
+### ADT Violin Plots
+```{r Post-Filter ADT Violin Plot, results="hide", fig.width=5, fig.height=7, out.width="70%"}
+png("PostFilter_VlnPlot_ADT.png", height=7, width=5, units='in', res=300)
+VlnPlot(seur, features = c("nFeature_ADT", "nCount_ADT"), ncol = 2)
+dev.off()
+VlnPlot(seur, features = c("nFeature_ADT", "nCount_ADT"), ncol = 2)
+```
+
+```{r Normalize RNA Data, message=FALSE}
+#Normalize RNA data
+seur <- NormalizeData(seur) %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA(verbose=FALSE)
+seur <- FindNeighbors(seur, dims = 1:30)
+seur <- FindClusters(seur, resolution = 0.8, algorithm=3, verbose = FALSE)
+seur <- RunUMAP(seur, reduction = 'pca', dims = 1:30, assay = 'RNA', 
+                      reduction.name = 'rna.umap', reduction.key = 'rnaUMAP_')
+```
+
+## UMAP Plot and Clusters {.tabset}
+
+### RNA-Based 
+```{r RNA UMAP Plot, echo=FALSE, warning=FALSE, message=FALSE, results="hide"}
+png("UMAP_RNA.png", width=1800, height=1600, res = 300)
+DimPlot(seur, reduction='rna.umap', label = TRUE) + ggtitle("RNA")
+dev.off()
+DimPlot(seur, reduction='rna.umap', label = TRUE)
+```
+
+```{r Normalize ADT Data, message=FALSE}
+#Normalize ADT data
+DefaultAssay(seur) <- 'ADT'
+# we will use all ADT features for dimensional reduction
+# we set a dimensional reduction name to avoid overwriting the 
+VariableFeatures(seur) <- rownames(seur[["ADT"]])
+seur <- NormalizeData(seur, normalization.method = 'CLR', margin = 2) %>% 
+  ScaleData() %>% RunPCA(reduction.name = 'apca')
+seur <- FindNeighbors(seur, dims = 1:min(length(rownames(seur[['ADT']]))-1, 20), reduction = "apca")
+seur <- FindClusters(seur, graph.name = "ADT_snn", algorithm = 3, verbose = FALSE)
+seur <- RunUMAP(seur, reduction = 'apca', dims = 1:min(length(rownames(seur[['ADT']]))-1, 20), assay = 'ADT', 
+                reduction.name = 'adt.umap', reduction.key = 'adtUMAP_')
+```
+
+### ADT-Based
+```{r ADT UMAP Plot, echo=FALSE, warning=FALSE, message=FALSE, results="hide"}
+png("UMAP_ADT.png", width=1800, height=1600, res = 300)
+DimPlot(seur, reduction='rna.umap', label = TRUE) + ggtitle("RNA")
+dev.off()
+DimPlot(seur, reduction='adt.umap', label = TRUE)
+```
+
+```{r Weighted Nearest Neighbors, message=FALSE}
+#Get nearest neighbors based on both RNA and ADT data
+seur <- FindMultiModalNeighbors(
+  seur, reduction.list = list("pca", "apca"), 
+  dims.list = list(1:30, 1:dim(seur@reductions$apca)[[2]]), modality.weight.name = "RNA.weight"
+)
+
+
+#UMAP based on the multi-modal weighted graph
+seur <- RunUMAP(seur, nn.name = "weighted.nn", reduction.name = "wnn.umap", reduction.key = "wnnUMAP_")
+seur <- FindClusters(seur, graph.name = "wsnn", algorithm = 3, verbose = FALSE)
+```
+
+### Weighted Nearest Neighbor
+```{r Multi-Modal UMAP Plot, echo=FALSE, warning=FALSE, message=FALSE, result='hide'}
+p1 <- DimPlot(seur, reduction = 'wnn.umap', label = TRUE, repel = TRUE, label.size = 2.5) #+ NoLegend()
+
+png("UMAP_MultiModal_WNN.png", width=1800, height=1600, res = 300)
+p1 + ggtitle("Multi-Modal Weighted Graph")
+dev.off()
+
+p1
+```
+
+#### Weighted Nearest Neighbor Cell Modality Weights per Cluster
+```{r Multi-Modal Modality Weights, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.width=10, fig.height=7}
+(VlnPlot(seur, features = "RNA.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend()) / (VlnPlot(seur, features = "ADT.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend())
+```
+
+### Weighted Nearest Neighbor Clusters with RNA and ADT UMAP Coordinates
+```{r RNA and ADT UMAP Plot, echo=FALSE, warning=FALSE, message=FALSE, result='hide', fig.width=12,}
+#UMAP based on RNA and ADT data individually
+
+p3 <- DimPlot(seur, reduction = 'rna.umap', label = TRUE, 
+              repel = TRUE, label.size = 2.5) + NoLegend() + ggtitle("RNA")
+p4 <- DimPlot(seur, reduction = 'adt.umap', label = TRUE, 
+              repel = TRUE, label.size = 2.5)  + ggtitle("ADT") #+ NoLegend()
+png("UMAP_MultiModal_RNA_ADT.png", width=3600, height=1600, res = 300)
+p3 + p4
+dev.off()
+
+p3+p4
+```
+
+## ADT Expression Plots
+Ridge plots have been generated for each of the ADT included in the data
+
+```{r RidgePlots of ADT, echo=FALSE, warning=FALSE, message=FALSE, result='hide'}
+adt_thresh = 0
+pdf('./Ridgeplots.pdf', width=21, height=21)
+for (i in seq(1,length(rownames(seur)), by=25)) {
+  print(RidgePlot(seur, sort(names(which(rowSums(seur[['ADT']]) > adt_thresh)))[i:min(i+24,length(rownames(seur[['ADT']])))], assay="ADT", ncol=5))
+}
+dev.off()
+```
+
+
+```{r conditional_block, echo=FALSE, results='asis', eval=length(names(which(rowSums(seur[['ADT']]) == 0))) > adt_thresh}
+cat("Some ADT features have been excluded because they do not meet an expression threshold of ", adt_thresh)
+cat("They are: \n\n")
+cat(paste('-', sort(names(which(rowSums(seur[['ADT']]) == 0)) > adt_thresh)), sep = '\n') 
+```
+
+```{r Prepare for Heatmap, include=FALSE}
+require(scales)
+identities <- levels(seur$wsnn_res.0.8)
+DefaultAssay(seur) <- 'RNA'
+
+my_color_palette <- list(hue_pal()(length(identities)))
+
+cols <- as.character(c((1:length(my_color_palette[[1]]))) - 1)
+colors <- list(seurat_clusters=array(my_color_palette[[1]], dim = length(my_color_palette[[1]]), dimnames = list(cols)))
+
+pbmc_subset.sce <- as.SingleCellExperiment(seur)
+suppressWarnings(dir.create('DEG'))
+```
+
+```{r DEG Calculation, message=FALSE}
+# 1 cluster vs all other clusters
+ for (cluster in c(0:(length(identities) - 1))) {
+   try({
+     Markers <- FindMarkers(seur,ident.1=cluster,test.use="MAST",only.pos = T)
+     if (length(row.names(Markers) != 0)){
+       Markers$sub <- Markers$pct.1-Markers$pct.2
+       Markershead <- head(Markers, n=20)
+       
+       filename <- paste0('DEG/', sample, "_", cluster, "_markers.txt")
+       write.table(cbind(Genes = rownames(Markers), Markers), filename, sep="\t", quote=FALSE, row.names=FALSE)
+       
+       Markers12 <- head(rownames(Markershead), n=12)
+       filename <- paste0('DEG/', sample, "_", cluster,"_Features.png", sep="")
+       png(filename , width=3200, height=3200, res = 300)
+       print(FeaturePlot(seur, features = Markers12, ncol=3))
+       dev.off()
+     }
+   })
+ }
+```
+
+```{r Save RDS Object}
+saveRDS(seur, file="seur_cite_cluster.rds")
+```
+
+```{r Output Session Info, echo=TRUE, results='show'}
+sessionInfo()
+```

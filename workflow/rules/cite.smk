@@ -131,3 +131,23 @@ rule aggregate:
             --normalize=mapped \\
         2>{log.err} 1>{log.log}
         """
+
+rule seurat:
+    input:
+        join(workpath, "{sample}", "outs", "web_summary.html")
+    output:
+        rds = join(workpath, "seurat", "{sample}", "seur_cite_cluster.rds"), html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html") 
+    log:
+        join("seurat", "{sample}", "seurat.log")
+    params:
+        rname = "seurat",
+        sample = "{sample}",
+        outdir = join(workpath, "seurat/{sample}"),
+        data = join(workpath, "{sample}/outs/filtered_feature_bc_matrix/"),
+        seurat = join("workflow", "scripts", "seurat_adt.Rmd"),
+        html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html")
+    shell:
+        """
+        module load R; R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', data_path='{params.data}', sample='{params.sample}', genome='{genome}'), output_file = '{params.html}') > {log}"
+        """
+
