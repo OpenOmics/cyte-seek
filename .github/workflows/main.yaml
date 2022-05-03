@@ -19,20 +19,38 @@ jobs:
       run: |
         docker run -v $PWD:/opt2 snakemake/snakemake:v5.24.2 \
         /opt2/chicyte cite --genome hg38 --input \
-        /opt2/.tests/WT_S1.R1.fastq.gz /opt2/.tests/WT_S1.R2.fastq.gz \
-        /opt2/.tests/WT_S2_R1.fastq.gz /opt2/.tests/WT_S2_R2.fastq.gz \
-        /opt2/.tests/WT_S3_1.fastq.gz /opt2/.tests/WT_S3_2.fastq.gz \
-        /opt2/.tests/WT_S4_R1.001.fastq.gz /opt2/.tests/WT_S4_R2.001.fastq.gz \
+        /opt2/.tests/1_HTO1_S1_R1_001.fastq.gz /opt2/.tests/1_HTO1_S1_R2_001.fastq.gz \
+        /opt2/.tests/2_HTO2_S2_R1_001.fastq.gz /opt2/.tests/2_HTO2_S2_R2_001.fastq.gz \
+        /opt2/.tests/3_ADT1_S1_R1_001.fastq.gz /opt2/.tests/3_ADT1_S1_R2_001.fastq.gz \
+        /opt2/.tests/4_ADT2_S2_R1_001.fastq.gz /opt2/.tests/4_ADT2_S2_R2_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L001_I1_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L001_R1_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L001_R2_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L002_I1_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L002_R1_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L002_R2_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L001_I1_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L001_R1_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L001_R2_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L002_I1_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L002_R1_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L002_R2_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L001_I1_001.fastq.gz /opt2/.tests/Undetermined_S0_L001_R1_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L001_R2_001.fastq.gz /opt2/.tests/Undetermined_S0_L002_I1_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L002_R1_001.fastq.gz /opt2/.tests/Undetermined_S0_L002_R2_001.fastq.gz \
         --libraries /opt2/.tests/libraries.csv --features /opt2/.tests/features.csv \
         --num-cells 4000  --force-cells --pre-mrna --output /opt2/output --mode local --dry-run
     - name: Dry Run with test data, use defaults
       run: |
         docker run -v $PWD:/opt2 snakemake/snakemake:v5.24.2 \
         /opt2/chicyte cite --genome hg38 --input \
-        /opt2/.tests/WT_S1.R1.fastq.gz /opt2/.tests/WT_S1.R2.fastq.gz \
-        /opt2/.tests/WT_S2_R1.fastq.gz /opt2/.tests/WT_S2_R2.fastq.gz \
-        /opt2/.tests/WT_S3_1.fastq.gz /opt2/.tests/WT_S3_2.fastq.gz \
-        /opt2/.tests/WT_S4_R1.001.fastq.gz /opt2/.tests/WT_S4_R2.001.fastq.gz \
+        /opt2/.tests/1_HTO1_S1_R1_001.fastq.gz /opt2/.tests/1_HTO1_S1_R2_001.fastq.gz \
+        /opt2/.tests/2_HTO2_S2_R1_001.fastq.gz /opt2/.tests/2_HTO2_S2_R2_001.fastq.gz \
+        /opt2/.tests/3_ADT1_S1_R1_001.fastq.gz /opt2/.tests/3_ADT1_S1_R2_001.fastq.gz \
+        /opt2/.tests/4_ADT2_S2_R1_001.fastq.gz /opt2/.tests/4_ADT2_S2_R2_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L001_I1_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L001_R1_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L001_R2_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L002_I1_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L002_R1_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L002_R2_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L001_I1_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L001_R1_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L001_R2_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L002_I1_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L002_R1_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L002_R2_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L001_I1_001.fastq.gz /opt2/.tests/Undetermined_S0_L001_R1_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L001_R2_001.fastq.gz /opt2/.tests/Undetermined_S0_L002_I1_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L002_R1_001.fastq.gz /opt2/.tests/Undetermined_S0_L002_R2_001.fastq.gz \
         --libraries /opt2/.tests/libraries.csv --features /opt2/.tests/features.csv \
         --output /opt2/output --mode local --dry-run
     - name: Lint Workflow

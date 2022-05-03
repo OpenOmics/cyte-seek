@@ -1,0 +1,7 @@
+Name,Flowcell,Sample,Type
+S1,/data/NCBR/rawdata/NCBR-161/Flowcell_HWYLNDRXX,1_HTO1,Antibody Capture
+S1,/data/NCBR/rawdata/NCBR-161/Flowcell_HWYLNDRXX,3_ADT1,Antibody Capture
+S1,HWYLNDRXX,5_cDNA1,Gene Expression
+S2,HWYLNDRXX,2_HTO2,Antibody Capture
+S2,HWYLNDRXX,4_ADT2,Antibody Capture
+S2,HWYLNDRXX,6_cDNA2,Gene Expression
