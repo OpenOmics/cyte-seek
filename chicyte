@@ -304,7 +304,7 @@ def parsed_arguments(name, description):
                                         • CRISPR Guide Capture,
                                         • Antibody Capture
                                         • Custom
-                                  Example: --features libraries.csv
+                                  Example: --features features.csv
         
         Analysis options:
           --num-cells NUM_CELLS 
@@ -323,7 +323,7 @@ def parsed_arguments(name, description):
         Orchestration options:
           --mode {{slurm,local}}  
                                 Method of execution. Defines the mode of execution. 
-                                Vaild options for this mode include: local or slurm. 
+                                Vaild options for this mode include: slurm or local. 
                                 Additional modes of exection are coming soon, default:  
                                 slurm.
                                 Here is a brief description of each mode:
@@ -405,7 +405,10 @@ def parsed_arguments(name, description):
 
           # Step 2A.) Dry-run the pipeline
           ./{} cite --input .tests/*.R?.fastq.gz \\
-                         --output /data/$USER/output\\
+                         --output /data/$USER/output \\
+                         --features .tests/features.csv \\
+                         --libraries libraries.csv \\
+                         --genome hg38 \\
                          --mode slurm \\
                          --dry-run
 
@@ -415,6 +418,9 @@ def parsed_arguments(name, description):
           # the pipeline in this mode.
           ./{} cite --input .tests/*.R?.fastq.gz \\
                          --output /data/$USER/output \\
+                         --features .tests/features.csv \\
+                         --libraries libraries.csv \\
+                         --genome hg38 \\
                          --mode slurm
 
         Version:

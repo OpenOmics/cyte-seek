@@ -18,7 +18,7 @@ jobs:
     - name: Dry Run with test data, all options
       run: |
         docker run -v $PWD:/opt2 snakemake/snakemake:v5.24.2 \
-        /opt2/chicyte cite --input \
+        /opt2/chicyte cite --genome hg38 --input \
         /opt2/.tests/WT_S1.R1.fastq.gz /opt2/.tests/WT_S1.R2.fastq.gz \
         /opt2/.tests/WT_S2_R1.fastq.gz /opt2/.tests/WT_S2_R2.fastq.gz \
         /opt2/.tests/WT_S3_1.fastq.gz /opt2/.tests/WT_S3_2.fastq.gz \
@@ -28,7 +28,7 @@ jobs:
     - name: Dry Run with test data, use defaults
       run: |
         docker run -v $PWD:/opt2 snakemake/snakemake:v5.24.2 \
-        /opt2/chicyte cite --input \
+        /opt2/chicyte cite --genome hg38 --input \
         /opt2/.tests/WT_S1.R1.fastq.gz /opt2/.tests/WT_S1.R2.fastq.gz \
         /opt2/.tests/WT_S2_R1.fastq.gz /opt2/.tests/WT_S2_R2.fastq.gz \
         /opt2/.tests/WT_S3_1.fastq.gz /opt2/.tests/WT_S3_2.fastq.gz \
