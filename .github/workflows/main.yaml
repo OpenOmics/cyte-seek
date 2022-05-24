@@ -1,0 +1,60 @@
+name: tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches_ignore: []
+
+jobs:
+  Dry_Run_and_Lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: docker://snakemake/snakemake:v5.24.2
+    - name: Dry Run with test data, all options
+      run: |
+        docker run -v $PWD:/opt2 snakemake/snakemake:v5.24.2 \
+        /opt2/chicyte cite --genome hg38 --input \
+        /opt2/.tests/1_HTO1_S1_R1_001.fastq.gz /opt2/.tests/1_HTO1_S1_R2_001.fastq.gz \
+        /opt2/.tests/2_HTO2_S2_R1_001.fastq.gz /opt2/.tests/2_HTO2_S2_R2_001.fastq.gz \
+        /opt2/.tests/3_ADT1_S1_R1_001.fastq.gz /opt2/.tests/3_ADT1_S1_R2_001.fastq.gz \
+        /opt2/.tests/4_ADT2_S2_R1_001.fastq.gz /opt2/.tests/4_ADT2_S2_R2_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L001_I1_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L001_R1_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L001_R2_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L002_I1_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L002_R1_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L002_R2_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L001_I1_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L001_R1_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L001_R2_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L002_I1_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L002_R1_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L002_R2_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L001_I1_001.fastq.gz /opt2/.tests/Undetermined_S0_L001_R1_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L001_R2_001.fastq.gz /opt2/.tests/Undetermined_S0_L002_I1_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L002_R1_001.fastq.gz /opt2/.tests/Undetermined_S0_L002_R2_001.fastq.gz \
+        --libraries /opt2/.tests/libraries.csv --features /opt2/.tests/features.csv \
+        --num-cells 4000  --force-cells --pre-mrna --output /opt2/output --mode local --dry-run
+    - name: Dry Run with test data, use defaults
+      run: |
+        docker run -v $PWD:/opt2 snakemake/snakemake:v5.24.2 \
+        /opt2/chicyte cite --genome hg38 --input \
+        /opt2/.tests/1_HTO1_S1_R1_001.fastq.gz /opt2/.tests/1_HTO1_S1_R2_001.fastq.gz \
+        /opt2/.tests/2_HTO2_S2_R1_001.fastq.gz /opt2/.tests/2_HTO2_S2_R2_001.fastq.gz \
+        /opt2/.tests/3_ADT1_S1_R1_001.fastq.gz /opt2/.tests/3_ADT1_S1_R2_001.fastq.gz \
+        /opt2/.tests/4_ADT2_S2_R1_001.fastq.gz /opt2/.tests/4_ADT2_S2_R2_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L001_I1_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L001_R1_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L001_R2_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L002_I1_001.fastq.gz \
+        /opt2/.tests/5_cDNA1_S1_L002_R1_001.fastq.gz /opt2/.tests/5_cDNA1_S1_L002_R2_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L001_I1_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L001_R1_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L001_R2_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L002_I1_001.fastq.gz \
+        /opt2/.tests/6_cDNA2_S2_L002_R1_001.fastq.gz /opt2/.tests/6_cDNA2_S2_L002_R2_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L001_I1_001.fastq.gz /opt2/.tests/Undetermined_S0_L001_R1_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L001_R2_001.fastq.gz /opt2/.tests/Undetermined_S0_L002_I1_001.fastq.gz \
+        /opt2/.tests/Undetermined_S0_L002_R1_001.fastq.gz /opt2/.tests/Undetermined_S0_L002_R2_001.fastq.gz \
+        --libraries /opt2/.tests/libraries.csv --features /opt2/.tests/features.csv \
+        --output /opt2/output --mode local --dry-run
+    - name: Lint Workflow
+      continue-on-error: true
+      run: |
+        docker run -v $PWD:/opt2 snakemake/snakemake:v5.24.2 snakemake --lint -s /opt2/output/workflow/Snakefile -d /opt2/output || \
+        echo 'There may have been a few warnings or errors. Please read through the log to determine if its harmless.'
