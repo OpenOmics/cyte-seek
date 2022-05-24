@@ -4,7 +4,7 @@
 def count_premrna(wildcards):
     """
     Wrapper to decide whether to include introns for counting.
-    See config['options']['pre_mrna'] for the encoded value.   
+    See config['options']['pre_mrna'] for the encoded value.
     """
     if pre_mrna:
         return('--include-introns')
@@ -25,14 +25,14 @@ def count_expect_force(wildcards):
 
 # Rule definitions
 rule librariesCSV:
-    output: 
+    output:
         expand(join(workpath, "{sample}_libraries.csv"), sample=lib_samples)
-    params: 
+    params:
         rname = "libcsv",
         fastq = ",".join(input_paths_set),
         libraries = libraries,
         create_libs = join("workflow", "scripts", "create_library_files.py"),
-    shell: 
+    shell:
         """
         python {params.create_libs} \\
             {params.libraries} \\
@@ -41,25 +41,25 @@ rule librariesCSV:
 
 
 rule count:
-    input: 
+    input:
         lib = join(workpath, "{sample}_libraries.csv"),
         features = features
-    output: 
+    output:
         join(workpath, "{sample}", "outs", "web_summary.html")
-    log: 
-        err = "run_{sample}_10x_cellranger_count.err", 
+    log:
+        err = "run_{sample}_10x_cellranger_count.err",
         log ="run_{sample}_10x_cellranger_count.log"
-    params: 
+    params:
         rname = "count",
-        batch = "-l nodes=1:ppn=16,mem=96gb", 
-        prefix = "{sample}", 
-        numcells = lambda wildcards:s2c[wildcards.sample], 
+        batch = "-l nodes=1:ppn=16,mem=96gb",
+        prefix = "{sample}",
+        numcells = lambda wildcards:s2c[wildcards.sample],
         transcriptome = config["references"][genome]["transcriptome"],
-        premrna = count_premrna, 
+        premrna = count_premrna,
         cells_flag = count_expect_force
     envmodules:
         config["tools"]["cellranger"]
-    shell: 
+    shell:
         """
         # Remove output directory
         # prior to running cellranger
@@ -79,55 +79,89 @@ rule count:
 
 
 rule summaryFiles:
-    input: 
+    input:
         expand(join(workpath, "{sample}", "outs", "web_summary.html"), sample=lib_samples)
-    output: 
+    output:
         join(workpath, "finalreport", "metric_summary.xlsx"),
         expand(join(workpath, "finalreport", "summaries", "{sample}_web_summary.html"), sample=lib_samples)
-    params: 
+    params:
         rname = "sumfile",
         batch = "-l nodes=1:ppn=1",
         summarize = join("workflow", "scripts", "generateSummaryFiles.py"),
-    shell: 
+    shell:
         """
         python2 {params.summarize}
         """
 
 
 rule aggregateCSV:
-    input: 
+    input:
         expand(join(workpath, "{sample}", "outs", "web_summary.html"), sample=lib_samples)
-    output: 
+    output:
         join(workpath, "AggregatedDatasets.csv"),
-    params: 
+    params:
         rname = "aggcsv",
         batch = "-l nodes=1:ppn=1",
         outdir = workpath,
         aggregate = join("workflow", "scripts", "generateAggregateCSV.py"),
-    shell: 
+    shell:
         """
         python2 {params.aggregate} {params.outdir}
         """
 
 
 rule aggregate:
-    input: 
+    input:
         csv=join(workpath, "AggregatedDatasets.csv"),
-    output: 
+    output:
         touch(join(workpath, 'aggregate.complete')),
-    log: 
-        err="run_10x_aggregate.err", 
+    log:
+        err="run_10x_aggregate.err",
         log="run_10x_aggregate.log",
-    params: 
+    params:
         rname = "agg",
         batch = "-l nodes=1:ppn=16,mem=96gb",
     envmodules:
         config["tools"]["cellranger"]
-    shell: 
+    shell:
         """
         cellranger aggr \\
             --id=AggregatedDatasets \\
             --csv={input.csv} \\
             --normalize=mapped \\
         2>{log.err} 1>{log.log}
+        """
+
+rule seurat:
+    input:
+        join(workpath, "{sample}", "outs", "web_summary.html")
+    output:
+        rds = join(workpath, "seurat", "{sample}", "seur_cite_cluster.rds")
+    log:
+        join("seurat", "{sample}", "seurat.log")
+    params:
+        rname = "seurat",
+        sample = "{sample}",
+        outdir = join(workpath, "seurat/{sample}"),
+        data = join(workpath, "{sample}/outs/filtered_feature_bc_matrix/"),
+        seurat = join("workflow", "scripts", "seurat_adt.R"),
+    shell:
+        """
+        module load R; R --no-save --args {params.outdir} {params.data} {params.sample} {genome} < {params.seurat} > {log}
+        """
+
+rule seurat_rmd_report:
+    input:
+        join(workpath, "seurat", "{sample}", "seur_cite_cluster.rds")
+    output:
+        html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html")
+    params:
+        rname = "seurat_rmd_report",
+        sample = "{sample}",
+        outdir = join(workpath, "seurat/{sample}"),
+        seurat = join("workflow", "scripts", "seurat_adt_plot.Rmd"),
+        html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html")
+    shell:
+        """
+        module load R; R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
         """

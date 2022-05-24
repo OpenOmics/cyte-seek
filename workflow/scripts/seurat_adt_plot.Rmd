@@ -1,0 +1,193 @@
+---
+title: "Sample `r params$sample` PreProcessing"
+output: 
+  html_document:
+    toc: true
+    toc_float: 
+      collapsed: false
+date: "`r Sys.Date()`"
+params: 
+  workdir: seurat
+  sample: sample_name
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = FALSE, results='asis')
+options(knitr.graphics.error = FALSE)
+```
+
+```{r Packages, message=FALSE}
+library(knitr)
+library(stringr)
+# library(scater)
+```
+
+```{r Input, include=FALSE}
+workdir <- params$workdir
+sample <- params$sample
+hashtag <- FALSE
+```
+
+Working Directory: `r workdir`
+
+Sample Name: `r sample`
+
+
+```{r Change Working Directory, include=FALSE}
+knitr::opts_knit$set(root.dir = workdir)
+```
+
+## Sample QC
+
+### Pre-Filter QC Plots {.tabset}
+
+#### Per Cell Gene Scatter Plots 
+
+```{r, out.height="80%"}
+myimages<-list.files("images/", pattern = ".png", full.names = TRUE)
+include_graphics(file.path(workdir, 'PreFilter_Gene_Plot.png'))
+```
+
+#### RNA Violin Plots
+```{r, out.height="80%"}
+myimages<-list.files("images/", pattern = ".png", full.names = TRUE)
+include_graphics(file.path(workdir, 'PreFilter_VlnPlot_RNA.png'))
+```
+
+#### ADT Violin Plots
+```{r, out.width="60%"}
+myimages<-list.files("images/", pattern = ".png", full.names = TRUE)
+include_graphics(file.path(workdir, 'PreFilter_VlnPlot_ADT.png'))
+```
+
+```{r Pre-Filter HTO Violin, results='asis', out.height="80%", eval=file.exists('PreFilter_VlnPlot_HTO.png')}
+cat("#### HTO Violin Plots")
+cat("\n\n")
+include_graphics(file.path(workdir, 'PreFilter_VlnPlot_HTO.png'))
+
+hashtag <- TRUE
+```
+
+
+### Cell Filter Thresholds
+```{r}
+thresh <- read.csv('cell_filter_info.csv')
+```
+Thresholds were calculated and used to filter out potential low quality cells and multiplets. The following are the thresholds that were set for each set of statistics.
+
+RNA Gene Count Thresholds: (`r sprintf("%.2f", exp(thresh$nFeature_RNA_low)-1)`, `r sprintf("%.2f",  exp(thresh$nFeature_RNA_high)-1)`)
+
+RNA Read Count Thresholds: (`r sprintf("%.2f", exp(thresh$nCount_RNA_low)-1)`, `r sprintf("%.2f", exp(thresh$nCount_RNA_high)-1)`)
+
+Mitochondrial Percentage Upper Threshold: `r sprintf("%.2f", exp(thresh$mt_high)-1)`
+
+ADT Read Count Upper Threshold: `r sprintf("%.2f", exp(thresh$nCount_ADT_high)-1)`
+
+```{r Cell Filter, warning=FALSE, message=FALSE, results='asis', fig.width=5, fig.height=7, out.width="70%", eval=hashtag}
+cat("HTO Read Count Upper Threshold: ", sprintf("%.2f", exp(thresh$nCount_HTO_high)-1))
+```
+
+Total cells filtered: `r thresh$numCellsRemove`
+
+
+### Post-Filter QC Plots {.tabset}
+
+#### Per Cell Gene Scatter Plots 
+
+```{r, out.height="80%"}
+include_graphics(file.path(workdir, 'PostFilter_Gene_Plot.png'))
+```
+
+#### RNA Violin Plots
+```{r, out.height="80%"}
+include_graphics(file.path(workdir, 'PostFilter_VlnPlot_RNA.png'))
+```
+
+#### ADT Violin Plots
+```{r, out.width="60%"}
+include_graphics(file.path(workdir, 'PostFilter_VlnPlot_ADT.png'))
+```
+
+```{r Post-Filter HTO Violin, results='asis', out.width="60%", eval=hashtag}
+cat("#### HTO Violin Plots")
+cat("\n\n")
+include_graphics(file.path(workdir, 'PostFilter_VlnPlot_HTO.png'))
+
+```
+
+
+```{r, eval=hashtag}
+cat("## Hashtag Multiplexing\n\n")
+cat("### HTO Ridge Plot")
+cat("\n\n")
+include_graphics(file.path(workdir, 'HTO_Ridge_Plot.png'))
+```
+
+## UMAP Plot and Clusters {.tabset}
+
+### RNA-Based 
+```{r}
+include_graphics(file.path(workdir, 'UMAP_RNA.png'))
+```
+
+### ADT-Based
+```{r}
+include_graphics(file.path(workdir, 'UMAP_ADT.png'))
+```
+
+### Weighted Nearest Neighbor
+```{r}
+include_graphics(file.path(workdir, 'UMAP_MultiModal_WNN.png'))
+```
+
+#### Weighted Nearest Neighbor Cell Modality Weights per Cluster
+```{r}
+include_graphics(file.path(workdir, 'MultiModal_WNN_Weights.png'))
+```
+
+### Weighted Nearest Neighbor Clusters with RNA and ADT UMAP Coordinates
+```{r}
+include_graphics(file.path(workdir, 'UMAP_MultiModal_RNA_ADT.png'))
+```
+
+## ADT Expression 
+Ridge plots have been generated for each of the ADT included in the data. The following is the first of these sets of images.
+
+```{r, eval=file.exists("ADT_excluded.csv")}
+
+adt_thresh <- read.table('ADT_threshold.txt')[[1]]
+genes <- read.csv('ADT_excluded.csv', header=FALSE)
+
+cat("Some ADT features have been excluded because they do not meet an expression threshold of ", adt_thresh, ".")
+cat("\n\nThey are: \n\n")
+cat(paste('-', sort(genes$V1)), sep = '\n')
+```
+
+```{r}
+myimages<-list.files(file.path(workdir, "ADT/", pattern = ".png", full.names = TRUE))
+include_graphics(file.path(workdir, 'ADT/ADT_Ridgeplots_1.png'))
+```
+
+## Cluster-based Differentially Expressed Genes {.tabset}
+```{r, results='asis'}
+filenames <- Sys.glob(file.path(workdir, 'DEG/*txt'))
+clusters <- list()
+for (filename in str_sort(filenames, numeric=TRUE)) {
+  file_split <- strsplit(basename(filename), '_')[[1]]
+  cluster <- file_split[2:(length(file_split)-1)]
+  Markers <- read.table(filename, header=TRUE)
+  clusters[[cluster]] <- Markers
+}
+
+degTable <- function(x){
+  cat("### ", x)
+  cat(knitr::knit_print(DT::datatable(clusters[[x]], height='100%', width='100%')))
+}
+
+output <- lapply(names(clusters)[1:(length(clusters)-1)], degTable)
+
+cat("### ", names(clusters)[[length(clusters)]])
+knitr::knit_print(DT::datatable(clusters[[length(clusters)]], height='100%', width='100%'))
+
+```
+

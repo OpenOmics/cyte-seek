@@ -39,7 +39,7 @@ def main(raw_args=None):
         text = []
         for values in samples[sample]:
             if args.fastqs != None:
-                runs = [path for path in fastqs if values[0] in path]
+                runs = [path for path in fastqs if values[0].rstrip('/') in path]
                 if len(runs) != 1:
                     runs = [run for run in runs if values[1] in run]
                 if len(runs) != 1:

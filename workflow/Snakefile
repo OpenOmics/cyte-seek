@@ -89,6 +89,15 @@ for p in input_paths:
 with open(join('config', 'cluster.json')) as fh:
     cluster = json.load(fh)
 
+# Aggregated output - conditional on having more than one sample
+aggr_out = []
+if len(lib_samples) > 1:
+    # Aggregated CSV, aggregated dataset - conditional on having more than one sample
+    # @imported from rules/cite.smk
+    aggr_out.append(join(workpath, "AggregatedDatasets.csv"))
+    # CellRanger agg, aggregated dataset
+    aggr_out.append(join(workpath, 'aggregate.complete'))
+
 # Final ouput files of the pipeline
 rule all:
     input:
@@ -111,12 +120,14 @@ rule all:
             join(workpath, "finalreport", "summaries", "{sample}_web_summary.html"), 
             sample=lib_samples
         ),
-        # Aggregated CSV, aggregated dataset
+        # Aggregate rules
+        aggr_out,
+        # Seurat analysis report
         # @imported from rules/cite.smk
-        join(workpath, "AggregatedDatasets.csv"),
-        # CellRanger agg, aggregated dataset
-        join(workpath, 'aggregate.complete'),
-
+        expand(
+            join(workpath, "seurat", "{sample}", "{sample}_seurat.html"),
+            sample=lib_samples
+        ),
 
 # Import rules
 include: join("rules", "common.smk") # Rules common to all pipelines
