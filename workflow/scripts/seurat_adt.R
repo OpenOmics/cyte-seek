@@ -133,6 +133,25 @@ if (hashtag) {
 seur <- subset(seur, cells = unique(c(cellsToRemove.Feature_RNA, cellsToRemove.Count_RNA, cellsToRemove.mito, cellsToRemove.Count_ADT, cellsToRemove.Count_HTO)), inver=T)
 
 
+## ----Demuxlet---------------
+
+demuxbest <- read.table('demuxlet/output/S2/S2.best', sep='\t', header=TRUE)
+
+rownames(demuxbest) <- demuxbest$BARCODE
+
+seur <- AddMetaData(seur, metadata = demuxbest[colnames(seur),])
+
+seur <- AddMetaData(seur, metadata = sapply(seur$BEST, function(x) strsplit(x, '-')[[1]][[1]]), col.name='DROPLET.TYPE')
+
+write.table(table(seur$DROPLET.TYPE), 'demuxlet_droplet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
+
+seur.full <- seur
+seur.AMB <- subset(seur, subset = DROPLET.TYPE == "AMB")
+seur <- subset(seur, subset = DROPLET.TYPE == "SNG")
+
+write.table(table(seur$BEST), 'demuxlet_singlet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
+
+
 ## ----Post-Filter Gene Plot, echo=FALSE, warning=FALSE, message=FALSE, results="hide", fig.width=10, fig.height=5----
 #Post-Filter Plots
 plot1 <- FeatureScatter(seur, feature1 = "nCount_RNA", feature2 = "percent.mito")

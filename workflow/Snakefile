@@ -105,7 +105,8 @@ demuxlet_out = []
 if demuxlet:
     # Processed vcf for demuxlet
     # @imported from rules/cite.smk
-    demuxlet_out.append(join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered.vcf'))
+    demuxlet_out.append(join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered.recode.vcf'))
+    demuxlet_out.append(expand(join(workpath, 'demuxlet', 'output', '{sample}', '{sample}.best'), sample=lib_samples))
 
 # Final ouput files of the pipeline
 rule all:
