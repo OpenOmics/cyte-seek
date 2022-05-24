@@ -145,6 +145,8 @@ rule seurat:
         outdir = join(workpath, "seurat/{sample}"),
         data = join(workpath, "{sample}/outs/filtered_feature_bc_matrix/"),
         seurat = join("workflow", "scripts", "seurat_adt.R"),
+    envmodules:
+        "R/4.1"
     shell:
         """
         module load R; R --no-save --args {params.outdir} {params.data} {params.sample} {genome} < {params.seurat} > {log}
@@ -161,7 +163,55 @@ rule seurat_rmd_report:
         outdir = join(workpath, "seurat/{sample}"),
         seurat = join("workflow", "scripts", "seurat_adt_plot.Rmd"),
         html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html")
+    envmodules:
+        "R/4.1"
     shell:
         """
         module load R; R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
+        """
+
+rule vcf_reorder:
+    input:
+        vcf = config['options']['vcf'],
+        web = expand(join(workpath, f"{sample}", "outs", "web_summary.html"), sample=lib_samples)
+    output:
+        vcf = join(workpath, 'demuxlet', 'vcf', 'output.vcf')
+    params:
+        rname = "vcf_reorder",
+        reorder = join("workflow", "scripts", "reorderVCF.py"),
+        bam = expand(join(workpath, "{sample}", "outs", "possorted_genome_bam.bam"), sample=lib_samples)[0]
+    envmodules:
+        config["tools"]["python3"]
+    shell:
+        """
+        python3 {params.reorder} -v {input.vcf} -b {params.bam} -o {output.vcf}
+        """
+
+rule vcf_filter_blacklist:
+    input:
+        vcf = rules.vcf_reorder.output.vcf
+    output:
+        vcf = temp(join(workpath, 'demuxlet', 'vcf', 'output.filteredblacklist.vcf'))
+    params:
+        rname = "vcf_filter_blacklist",
+        blacklist = config["references"][genome]["blacklist"]
+    envmodules:
+        "vcftools"
+    shell:
+        """
+        vcftools --vcf {input.vcf} --exclude-bed {params.blacklist} --recode --out {output.vcf}
+        """
+
+rule vcf_filter_quality:
+    input:
+        vcf = rules.vcf_filter_blacklist.output.vcf
+    output:
+        vcf = join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered.vcf')
+    params:
+        rname = "vcf_filter_quality",
+    envmodules:
+        "vcftools"
+    shell:
+        """
+        vcftools --vcf {input.vcf} --minGQ 10 --max-missing 1.0 --recode --out {output.vcf}
         """

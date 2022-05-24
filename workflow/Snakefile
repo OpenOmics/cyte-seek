@@ -35,6 +35,9 @@ pre_mrna = str_bool(                           # Use introns for pre mRNA,
 force_cells = str_bool(                        # Force use the expected number of cells,
     config['options']['force_cells']           # default: False
  )
+demuxlet = str_bool(
+    config['options']['demuxlet']
+)
 
 # Create a dictionary to map each lib_sample
 # to its expected number of cell counts
@@ -98,6 +101,12 @@ if len(lib_samples) > 1:
     # CellRanger agg, aggregated dataset
     aggr_out.append(join(workpath, 'aggregate.complete'))
 
+demuxlet_out = []
+if demuxlet:
+    # Processed vcf for demuxlet
+    # @imported from rules/cite.smk
+    demuxlet_out.append(join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered.vcf'))
+
 # Final ouput files of the pipeline
 rule all:
     input:
@@ -128,6 +137,9 @@ rule all:
             join(workpath, "seurat", "{sample}", "{sample}_seurat.html"),
             sample=lib_samples
         ),
+        # Demuxlet rules
+        demuxlet_out,
+        
 
 # Import rules
 include: join("rules", "common.smk") # Rules common to all pipelines
