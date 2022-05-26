@@ -22,6 +22,17 @@ def count_expect_force(wildcards):
     else:
         return('--expect-cells')
 
+def demuxlet_analysis(wildcards):
+    if demuxlet:
+        return(join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', f'{wildcards.sample}.best'))
+    else:
+        return()
+
+def seurat_optional_params(wildcards):
+    if demuxlet:
+        return(join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', f'{wildcards.sample}.best'))
+    else:
+        return('')
 
 # Rule definitions
 rule librariesCSV:
@@ -134,7 +145,8 @@ rule aggregate:
 
 rule seurat:
     input:
-        join(workpath, "{sample}", "outs", "web_summary.html")
+        join(workpath, "{sample}", "outs", "web_summary.html"),
+        demuxlet_analysis
     output:
         rds = join(workpath, "seurat", "{sample}", "seur_cite_cluster.rds")
     log:
@@ -145,11 +157,12 @@ rule seurat:
         outdir = join(workpath, "seurat/{sample}"),
         data = join(workpath, "{sample}/outs/filtered_feature_bc_matrix/"),
         seurat = join("workflow", "scripts", "seurat_adt.R"),
+        optional = seurat_optional_params
     envmodules:
         "R/4.1"
     shell:
         """
-        module load R; R --no-save --args {params.outdir} {params.data} {params.sample} {genome} < {params.seurat} > {log}
+        R --no-save --args {params.outdir} {params.data} {params.sample} {genome} {params.optional} < {params.seurat} > {log}
         """
 
 rule seurat_rmd_report:
@@ -167,7 +180,7 @@ rule seurat_rmd_report:
         "R/4.1"
     shell:
         """
-        module load R; R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
+        R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
         """
 
 rule vcf_reorder:
@@ -191,27 +204,78 @@ rule vcf_filter_blacklist:
     input:
         vcf = rules.vcf_reorder.output.vcf
     output:
-        vcf = temp(join(workpath, 'demuxlet', 'vcf', 'output.filteredblacklist.vcf'))
+        vcf = temp(join(workpath, 'demuxlet', 'vcf', 'output.filteredblacklist.recode.vcf'))
     params:
         rname = "vcf_filter_blacklist",
-        blacklist = config["references"][genome]["blacklist"]
+        blacklist = config["references"][genome]["blacklist"],
+        outname = join(workpath, 'demuxlet', 'vcf', 'output.filteredblacklist')
     envmodules:
         "vcftools"
     shell:
         """
-        vcftools --vcf {input.vcf} --exclude-bed {params.blacklist} --recode --out {output.vcf}
+        vcftools --vcf {input.vcf} --exclude-bed {params.blacklist} --recode --out {params.outname}
         """
 
 rule vcf_filter_quality:
     input:
         vcf = rules.vcf_filter_blacklist.output.vcf
     output:
-        vcf = join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered.vcf')
+        vcf = join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered.recode.vcf')
     params:
         rname = "vcf_filter_quality",
+        outname = join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered')
     envmodules:
         "vcftools"
     shell:
         """
-        vcftools --vcf {input.vcf} --minGQ 10 --max-missing 1.0 --recode --out {output.vcf}
+        vcftools --vcf {input.vcf} --minGQ 10 --max-missing 1.0 --recode --out {params.outname}
+        """
+
+rule demuxlet_patient_list:
+    input:
+        config = 'demuxlet.csv'
+    output:
+        patient_lists = expand(join(workpath, 'demuxlet', 'output', '{sample}', 'patient_list'), sample=lib_samples)
+    params:
+        rname = "demuxlet_patient_list",
+        script = join("workflow", "scripts", "create_demuxlet_patient_list.py")
+    envmodules:
+        config["tools"]["python3"]
+    shell:
+        """
+        python3 {params.script}
+        """
+
+rule demuxlet_barcode:
+    input:
+        join(workpath, "{sample}", "outs", "web_summary.html")
+    output:
+        barcode = join(workpath, 'demuxlet', 'output', '{sample}', 'barcodes.tsv')
+    params:
+        rname = "demuxlet_barcode",
+        barcodezip = join(workpath, "{sample}", "outs", "filtered_feature_bc_matrix", "barcodes.tsv.gz")
+    shell:
+        """
+        gunzip -c {params.barcodezip} > {output.barcode}
+        """
+
+rule run_demuxlet:
+    input:
+        patientlist = join(workpath, 'demuxlet', 'output', '{sample}', 'patient_list'),
+        vcf = rules.vcf_filter_quality.output.vcf,
+        barcode = rules.demuxlet_barcode.output.barcode
+    output:
+        join(workpath, 'demuxlet', 'output', '{sample}', '{sample}.best'),
+        join(workpath, 'demuxlet', 'output', '{sample}', '{sample}.single'),
+        join(workpath, 'demuxlet', 'output', '{sample}', '{sample}.sing2')
+    params:
+        rname = "demuxlet",
+        out = join(workpath, 'demuxlet', 'output', "{sample}", "{sample}"),
+        bam = join(workpath, "{sample}", "outs", "possorted_genome_bam.bam"),
+        script = join("workflow", "scripts", "create_demuxlet_patient_list.py")
+    envmodules:
+        config["tools"]["python3"]
+    shell:
+        """
+        /data/chenv3/chicyte_tools/demuxlet/demuxlet --group-list {input.barcode} --field GT --sam {params.bam} --vcf {input.vcf} --out {params.out} --sm-list {input.patientlist} --alpha 0 --alpha 0.5
         """

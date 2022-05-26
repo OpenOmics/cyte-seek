@@ -14,6 +14,12 @@ data_path <- args[2]
 sample <- args[3]
 genome <- args[4]
 
+demux <- FALSE
+if (length(args) > 4) {
+  demux <- TRUE
+  demux_path <- args[5]
+}
+  
 
 ## ----Load Data-----------------------------------------------------------------------
 rdata <- Read10X(data_path)
@@ -135,7 +141,8 @@ seur <- subset(seur, cells = unique(c(cellsToRemove.Feature_RNA, cellsToRemove.C
 
 ## ----Demuxlet---------------
 
-demuxbest <- read.table('demuxlet/output/S2/S2.best', sep='\t', header=TRUE)
+if (demux) {
+demuxbest <- read.table(demux_path, sep='\t', header=TRUE)
 
 rownames(demuxbest) <- demuxbest$BARCODE
 
@@ -150,7 +157,7 @@ seur.AMB <- subset(seur, subset = DROPLET.TYPE == "AMB")
 seur <- subset(seur, subset = DROPLET.TYPE == "SNG")
 
 write.table(table(seur$BEST), 'demuxlet_singlet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
-
+}
 
 ## ----Post-Filter Gene Plot, echo=FALSE, warning=FALSE, message=FALSE, results="hide", fig.width=10, fig.height=5----
 #Post-Filter Plots
@@ -190,6 +197,21 @@ seur <- FindClusters(seur, resolution = 0.8, algorithm=3, verbose = FALSE)
 seur <- RunUMAP(seur, reduction = 'pca', dims = 1:30, assay = 'RNA', 
                       reduction.name = 'rna.umap', reduction.key = 'rnaUMAP_')
 
+if (demux) {
+  seur.full <- NormalizeData(seur.full) %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA(verbose=FALSE)
+  seur.full <- FindNeighbors(seur.full, dims = 1:30)
+  seur.full <- FindClusters(seur.full, resolution = 0.8, algorithm=3, verbose = FALSE)
+  seur.full <- RunUMAP(seur.full, reduction = 'pca', dims = 1:30, assay = 'RNA', 
+                  reduction.name = 'rna.umap', reduction.key = 'rnaUMAP_')
+  
+  png("UMAP_RNA_Full.png", width=1800, height=1600, res = 300)
+  DimPlot(seur.full, reduction='rna.umap', group.by='RNA_snn_res.0.8', label = TRUE) + ggtitle("RNA")
+  dev.off()
+  
+  png("UMAP_RNA_Full_Droplet.png", width=1800, height=1600, res = 300)
+  DimPlot(seur.full, reduction='rna.umap', group.by='DROPLET.TYPE', label = TRUE) + ggtitle("RNA")
+  dev.off()
+}
 
 ## ----Normalize HTO Data, warning=FALSE, message=FALSE, eval=hashtag------------------
 if (hashtag) {
@@ -202,6 +224,10 @@ if (hashtag) {
   for (i in seq(1,length(rownames(seur[["HTO"]])), by=25)) {
     print(RidgePlot(seur, sort(rownames(seur[['HTO']]))[i:min(i+24,length(rownames(seur[['HTO']])))], assay="HTO", ncol=min(5, ceiling(sqrt(length(rownames(seur[['HTO']]))-(i-1)))), group.by='hash.ID'))
   }
+  
+  png("UMAP_RNA_HTO.png", width=1800, height=1600, res = 300)
+  DimPlot(seur, reduction='rna.umap', group.by='hash.ID', label = TRUE) + ggtitle("RNA")
+  dev.off()
 }
 
 
@@ -210,6 +236,11 @@ png("UMAP_RNA.png", width=1800, height=1600, res = 300)
 DimPlot(seur, reduction='rna.umap', group.by='RNA_snn_res.0.8', label = TRUE) + ggtitle("RNA")
 dev.off()
 
+if (demux) {
+  png("UMAP_RNA_Demux.png", width=1800, height=1600, res = 300)
+  DimPlot(seur, reduction='rna.umap', group.by='BEST', label = TRUE) + ggtitle("RNA")
+  dev.off()
+}
 
 ## ----Normalize ADT Data, message=FALSE-----------------------------------------------
 #Normalize ADT data
