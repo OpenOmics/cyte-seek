@@ -534,6 +534,24 @@ def parsed_arguments(name, description):
         help = argparse.SUPPRESS
     )
 
+    # Run demuxlet
+    subparser_cite.add_argument(
+        '--demuxlet',
+        action = 'store_true',
+        required = False,
+        default = False,
+        help = argparse.SUPPRESS
+    )
+
+    # VCF file
+    subparser_cite.add_argument(
+        '--vcf',
+        # Check if the file exists and if it is readable
+        type = lambda file: permissions(parser, file, os.R_OK),
+        required = False,
+        help = argparse.SUPPRESS
+    )
+
     # Force cell number
     subparser_cite.add_argument(
         '--force-cells',
