@@ -205,11 +205,11 @@ if (demux) {
                   reduction.name = 'rna.umap', reduction.key = 'rnaUMAP_')
   
   png("UMAP_RNA_Full.png", width=1800, height=1600, res = 300)
-  DimPlot(seur.full, reduction='rna.umap', group.by='RNA_snn_res.0.8', label = TRUE) + ggtitle("RNA")
+  print(DimPlot(seur.full, reduction='rna.umap', group.by='RNA_snn_res.0.8', label = TRUE) + ggtitle("RNA"))
   dev.off()
   
   png("UMAP_RNA_Full_Droplet.png", width=1800, height=1600, res = 300)
-  DimPlot(seur.full, reduction='rna.umap', group.by='DROPLET.TYPE', label = TRUE) + ggtitle("RNA")
+  print(DimPlot(seur.full, reduction='rna.umap', group.by='DROPLET.TYPE', label = TRUE) + ggtitle("RNA"))
   dev.off()
 }
 
@@ -238,7 +238,13 @@ dev.off()
 
 if (demux) {
   png("UMAP_RNA_Demux.png", width=1800, height=1600, res = 300)
-  DimPlot(seur, reduction='rna.umap', group.by='BEST', label = TRUE) + ggtitle("RNA")
+  print(DimPlot(seur, reduction='rna.umap', group.by='BEST', label = TRUE) + ggtitle("RNA"))
+  dev.off()
+  
+  cols = ceiling(sqrt(length(unique(seur$BEST))))
+  rows = length(unique(seur$BEST)) / cols
+  png("UMAP_RNA_Demux_Split_Raster.png", width=(1300*cols)+300, height=(1200*rows)+300, res = 300)
+  print(DimPlot(seur, reduction='rna.umap', split.by='BEST', ncol= cols, label = TRUE, raster=TRUE) + ggtitle("RNA"))
   dev.off()
 }
 
