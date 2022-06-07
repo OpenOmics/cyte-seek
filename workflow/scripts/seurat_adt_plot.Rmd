@@ -19,6 +19,8 @@ options(knitr.graphics.error = FALSE)
 ```{r Packages, message=FALSE}
 library(knitr)
 library(stringr)
+library(flextable)
+library(kableExtra)
 # library(scater)
 ```
 
@@ -26,6 +28,7 @@ library(stringr)
 workdir <- params$workdir
 sample <- params$sample
 hashtag <- FALSE
+demux <- FALSE
 ```
 
 Working Directory: `r workdir`
@@ -115,9 +118,38 @@ include_graphics(file.path(workdir, 'PostFilter_VlnPlot_HTO.png'))
 
 ```
 
+```{r Demuxlet Counts, results='asis', eval=file.exists('demuxlet_singlet_counts.csv')}
+demux <- TRUE
+cat("## Demuxlet Results")
+cat("\n\n")
+singlet <- read.table('demuxlet_singlet_counts.csv', sep=',', header = FALSE)
+colnames(singlet) <- c("Patient", "Cell Count")
+droplet <- read.table('demuxlet_droplet_counts.csv', sep=',', header = FALSE)
+colnames(droplet) <- c("Droplet Type", "Cell Count")
+droplet %>% flextable() %>% autofit()
+singlet %>% flextable() %>% autofit()
+##umap plot of group and split by genotype
+##and a table outlining the cell numbers in each
+
+#kable(droplet) %>%
+#  kable_styling(full_width = FALSE, position = "float_left")
+#kable(singlet) %>%
+#  kable_styling(full_width = FALSE, position = "left")
+
+include_graphics(file.path(workdir, 'UMAP_RNA_Full_Droplet.png'))
+```
+
 
 ```{r, eval=hashtag}
 cat("## Hashtag Multiplexing\n\n")
+if (demux) {
+  cat("Hashtag demultiplexing was performed prior to filtering based on demuxlet results\n\n")
+}
+cat("HTO Threshold used was ", as.numeric(read.table('hto_threshold.csv')[1]), "\n\n")
+hto <- read.table('hto_counts.csv', sep=',', header = FALSE)
+colnames(hto) <- c("Hashtag", "Cell Count")
+hto %>% flextable() %>% autofit()
+
 cat("### HTO Ridge Plot")
 cat("\n\n")
 include_graphics(file.path(workdir, 'HTO_Ridge_Plot.png'))
@@ -128,6 +160,9 @@ include_graphics(file.path(workdir, 'HTO_Ridge_Plot.png'))
 ### RNA-Based 
 ```{r}
 include_graphics(file.path(workdir, 'UMAP_RNA.png'))
+if (demux) {
+  include_graphics(file.path(workdir, 'UMAP_RNA_Demux_Split_Raster.png'))
+}
 ```
 
 ### ADT-Based

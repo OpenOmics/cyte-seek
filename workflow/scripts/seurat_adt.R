@@ -4,6 +4,7 @@ library(MAST)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
+library(dsb, lib.loc="/home/chenv3/R/4.1/library")
 # library(scater)
 
 
@@ -11,18 +12,20 @@ library(RColorBrewer)
 args<-commandArgs(TRUE);
 workdir <- args[1]
 data_path <- args[2]
-sample <- args[3]
-genome <- args[4]
+raw_data_path <- args[3]
+sample <- args[4]
+genome <- args[5]
 
 demux <- FALSE
-if (length(args) > 4) {
+if (length(args) > 5) {
   demux <- TRUE
-  demux_path <- args[5]
+  demux_path <- args[6]
 }
   
 
 ## ----Load Data-----------------------------------------------------------------------
 rdata <- Read10X(data_path)
+raw_data <- Read10X(raw_data_path)
 
 
 ## ----Create Working Directory, include=FALSE-----------------------------------------
@@ -138,27 +141,6 @@ if (hashtag) {
 ## ----Subset Cells--------------------------------------------------------------------
 seur <- subset(seur, cells = unique(c(cellsToRemove.Feature_RNA, cellsToRemove.Count_RNA, cellsToRemove.mito, cellsToRemove.Count_ADT, cellsToRemove.Count_HTO)), inver=T)
 
-
-## ----Demuxlet---------------
-
-if (demux) {
-demuxbest <- read.table(demux_path, sep='\t', header=TRUE)
-
-rownames(demuxbest) <- demuxbest$BARCODE
-
-seur <- AddMetaData(seur, metadata = demuxbest[colnames(seur),])
-
-seur <- AddMetaData(seur, metadata = sapply(seur$BEST, function(x) strsplit(x, '-')[[1]][[1]]), col.name='DROPLET.TYPE')
-
-write.table(table(seur$DROPLET.TYPE), 'demuxlet_droplet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
-
-seur.full <- seur
-seur.AMB <- subset(seur, subset = DROPLET.TYPE == "AMB")
-seur <- subset(seur, subset = DROPLET.TYPE == "SNG")
-
-write.table(table(seur$BEST), 'demuxlet_singlet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
-}
-
 ## ----Post-Filter Gene Plot, echo=FALSE, warning=FALSE, message=FALSE, results="hide", fig.width=10, fig.height=5----
 #Post-Filter Plots
 plot1 <- FeatureScatter(seur, feature1 = "nCount_RNA", feature2 = "percent.mito")
@@ -188,24 +170,59 @@ if (hashtag) {
   dev.off()
 }
 
+## ----Normalize HTO Data, warning=FALSE, message=FALSE, eval=hashtag------------------
+if (hashtag) {
+  hto_thresh <- 0.99
+  seur <- NormalizeData(seur, assay = "HTO", normalization.method = "CLR")
+  seur <- ScaleData(seur, assay = "HTO", model.use = "linear")
+  seur <- HTODemux(seur, assay = "HTO", positive.quantile = hto_thresh)
+  seur$hash.ID <- factor(seur$hash.ID, levels=levels(seur$hash.ID)[order(levels(seur$hash.ID))])
+  write.table(hto_thresh, 'hto_threshold.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',') 
+}
+
+## ----Demuxlet---------------
+
+if (demux) {
+  demuxbest <- read.table(demux_path, sep='\t', header=TRUE)
+  
+  rownames(demuxbest) <- demuxbest$BARCODE
+  
+  seur <- AddMetaData(seur, metadata = demuxbest[colnames(seur),])
+  
+  seur <- AddMetaData(seur, metadata = sapply(seur$BEST, function(x) strsplit(x, '-')[[1]][[1]]), col.name='DROPLET.TYPE')
+  
+  write.table(table(seur$DROPLET.TYPE), 'demuxlet_droplet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
+  
+  seur.full <- seur
+  seur.AMB <- subset(seur, subset = DROPLET.TYPE == "AMB")
+  seur <- subset(seur, subset = DROPLET.TYPE == "SNG")
+  
+  write.table(table(seur$BEST), 'demuxlet_singlet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
+}
+
+
 
 ## ----Normalize RNA Data, message=FALSE-----------------------------------------------
 #Normalize RNA data
-seur <- NormalizeData(seur) %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA(verbose=FALSE)
+#seur <- NormalizeData(seur) %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA(verbose=FALSE)
+seur <- SCTransform(seur)
+seur <- RunPCA(seur)
 seur <- FindNeighbors(seur, dims = 1:30)
 seur <- FindClusters(seur, resolution = 0.8, algorithm=3, verbose = FALSE)
 seur <- RunUMAP(seur, reduction = 'pca', dims = 1:30, assay = 'RNA', 
                       reduction.name = 'rna.umap', reduction.key = 'rnaUMAP_')
 
 if (demux) {
-  seur.full <- NormalizeData(seur.full) %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA(verbose=FALSE)
+  #seur.full <- NormalizeData(seur.full) %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA(verbose=FALSE)
+  seur.full <- SCTransform(seur.full)
+  seur.full <- RunPCA(seur.full)
   seur.full <- FindNeighbors(seur.full, dims = 1:30)
   seur.full <- FindClusters(seur.full, resolution = 0.8, algorithm=3, verbose = FALSE)
   seur.full <- RunUMAP(seur.full, reduction = 'pca', dims = 1:30, assay = 'RNA', 
                   reduction.name = 'rna.umap', reduction.key = 'rnaUMAP_')
   
   png("UMAP_RNA_Full.png", width=1800, height=1600, res = 300)
-  print(DimPlot(seur.full, reduction='rna.umap', group.by='RNA_snn_res.0.8', label = TRUE) + ggtitle("RNA"))
+  print(DimPlot(seur.full, reduction='rna.umap', group.by='SCT_snn_res.0.8', label = TRUE) + ggtitle("RNA"))
   dev.off()
   
   png("UMAP_RNA_Full_Droplet.png", width=1800, height=1600, res = 300)
@@ -213,12 +230,64 @@ if (demux) {
   dev.off()
 }
 
+## ----Prepare Data for DSB Norm, warning=FALSE, message=FALSE, eval=hashtag------------------
+stained_cells = colnames(rdata$`Gene Expression`)
+background = setdiff(colnames(raw_data$`Gene Expression`), stained_cells)
+
+# split the data into separate matrices for RNA and ADT
+prot = raw_data$`Antibody Capture`
+rna = raw_data$`Gene Expression`
+
+# create metadata of droplet QC stats used in standard scRNAseq processing
+mtgene = grep(pattern = "^MT-", rownames(rna), value = TRUE) # used below
+
+md = data.frame(
+  rna.size = log10(Matrix::colSums(rna)), 
+  prot.size = log10(Matrix::colSums(prot)), 
+  n.gene = Matrix::colSums(rna > 0), 
+  mt.prop = Matrix::colSums(rna[mtgene, ]) / Matrix::colSums(rna)
+)
+
+# add indicator for barcodes Cell Ranger called as cells
+md$drop.class = ifelse(rownames(md) %in% stained_cells, 'cell', 'background')
+
+# remove barcodes with no evidence of capture in the experiment
+md = md[md$rna.size > 0 & md$prot.size > 0, ]
+
+#Using 1st quartile as cut-off due to being unable to view actual distribution
+background_drops = rownames(
+  md[ md$prot.size > quantile(md$prot.size, c(0.25)) & 
+        md$rna.size > quantile(md$rna.size, c(0.25)) & 
+        md$drop.class == 'background',]
+)
+
+#Make sure raw data names match Seurat names
+background.adt.mtx = as.matrix(prot[ , background_drops])
+rownames(background.adt.mtx) <- gsub('_', '-', rownames(background.adt.mtx))
+
+#DSB normalization
+
+cells.dsb.norm.adt = DSBNormalizeProtein(
+  cell_protein_matrix = GetAssayData(seur, assay='ADT', slot='counts'), 
+  empty_drop_matrix = background.adt.mtx[rownames(GetAssayData(seur, assay='ADT', slot='counts')),], 
+  denoise.counts = FALSE, 
+  use.isotype.control = FALSE, 
+  return.stats=TRUE
+)
+
+
 ## ----Normalize HTO Data, warning=FALSE, message=FALSE, eval=hashtag------------------
 if (hashtag) {
-  seur <- NormalizeData(seur, assay='HTO', normalization.method = 'CLR', margin = 2)
-  seur <- HTODemux(seur, assay = "HTO", positive.quantile = 0.99)
-  seur$hash.ID <- factor(seur$hash.ID, levels=levels(seur$hash.ID)[order(levels(seur$hash.ID))])
-
+  cells.dsb.norm.hto = DSBNormalizeProtein(
+    cell_protein_matrix = GetAssayData(seur, assay='HTO', slot='counts'), 
+    empty_drop_matrix = background.adt.mtx[rownames(GetAssayData(seur, assay='HTO', slot='counts')),], 
+    denoise.counts = FALSE, 
+    use.isotype.control = FALSE, 
+    return.stats=TRUE
+  )
+  
+  seur[["HTO"]] <- SetAssayData(seur[['HTO']], slot='data', new.data=cells.dsb.norm.hto$dsb_normalized_matrix)
+  
 ## ----HTO Ridge Plots, results='show', eval=hashtag, fig.width=12, fig.height=9-------
   png('HTO_Ridge_Plot.png', units='in', width=12, height=9, res=300)
   for (i in seq(1,length(rownames(seur[["HTO"]])), by=25)) {
@@ -228,12 +297,14 @@ if (hashtag) {
   png("UMAP_RNA_HTO.png", width=1800, height=1600, res = 300)
   DimPlot(seur, reduction='rna.umap', group.by='hash.ID', label = TRUE) + ggtitle("RNA")
   dev.off()
+  
+  write.table(table(seur$hash.ID), 'hto_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
 }
 
 
 ## ----RNA UMAP Plot, echo=FALSE, warning=FALSE, message=FALSE, results="hide"---------
 png("UMAP_RNA.png", width=1800, height=1600, res = 300)
-DimPlot(seur, reduction='rna.umap', group.by='RNA_snn_res.0.8', label = TRUE) + ggtitle("RNA")
+DimPlot(seur, reduction='rna.umap', group.by='SCT_snn_res.0.8', label = TRUE) + ggtitle("RNA")
 dev.off()
 
 if (demux) {
@@ -254,8 +325,8 @@ DefaultAssay(seur) <- 'ADT'
 # we will use all ADT features for dimensional reduction
 # we set a dimensional reduction name to avoid overwriting the 
 VariableFeatures(seur) <- rownames(seur[["ADT"]])
-seur <- NormalizeData(seur, normalization.method = 'CLR', margin = 2) %>% 
-  ScaleData() %>% RunPCA(reduction.name = 'apca')
+seur[['ADT']] <- SetAssayData(seur[['ADT']], slot='data', new.data=cells.dsb.norm.adt$dsb_normalized_matrix)
+seur <- ScaleData(seur) %>% RunPCA(reduction.name = 'apca')
 seur <- FindNeighbors(seur, dims = 1:min(length(rownames(seur[['ADT']]))-1, 20), reduction = "apca")
 seur <- FindClusters(seur, graph.name = "ADT_snn", algorithm = 3, verbose = FALSE)
 seur <- RunUMAP(seur, reduction = 'apca', dims = 1:min(length(rownames(seur[['ADT']]))-1, 20), assay = 'ADT', 
@@ -264,7 +335,7 @@ seur <- RunUMAP(seur, reduction = 'apca', dims = 1:min(length(rownames(seur[['AD
 
 ## ----ADT UMAP Plot, echo=FALSE, warning=FALSE, message=FALSE, results="hide"---------
 png("UMAP_ADT.png", width=1800, height=1600, res = 300)
-DimPlot(seur, reduction='adt.umap', label = TRUE) + ggtitle("RNA")
+DimPlot(seur, reduction='adt.umap', label = TRUE) + ggtitle("ADT")
 dev.off()
 
 
@@ -272,7 +343,7 @@ dev.off()
 #Get nearest neighbors based on both RNA and ADT data
 seur <- FindMultiModalNeighbors(
   seur, reduction.list = list("pca", "apca"), 
-  dims.list = list(1:30, 1:dim(seur@reductions$apca)[[2]]), modality.weight.name = "RNA.weight"
+  dims.list = list(1:30, 1:dim(seur@reductions$apca)[[2]]), modality.weight.name = "SCT.weight"
 )
 
 
@@ -290,7 +361,7 @@ dev.off()
 
 ## ----Multi-Modal Modality Weights, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.width=10, fig.height=7----
 png("MultiModal_WNN_Weights.png", width=3600, height=2400, res = 300)
-(VlnPlot(seur, features = "RNA.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend()) / (VlnPlot(seur, features = "ADT.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend())
+(VlnPlot(seur, features = "SCT.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend()) / (VlnPlot(seur, features = "ADT.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend())
 dev.off()
 
 ## ----RNA and ADT UMAP Plot, echo=FALSE, warning=FALSE, message=FALSE, result='hide', fig.width=12----
