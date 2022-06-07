@@ -156,13 +156,14 @@ rule seurat:
         sample = "{sample}",
         outdir = join(workpath, "seurat/{sample}"),
         data = join(workpath, "{sample}/outs/filtered_feature_bc_matrix/"),
+        rawdata = join(workpath, "{sample}/outs/raw_feature_bc_matrix/"),
         seurat = join("workflow", "scripts", "seurat_adt.R"),
         optional = seurat_optional_params
     envmodules:
         "R/4.1"
     shell:
         """
-        R --no-save --args {params.outdir} {params.data} {params.sample} {genome} {params.optional} < {params.seurat} > {log}
+        R --no-save --args {params.outdir} {params.data} {params.rawdata} {params.sample} {genome} {params.optional} < {params.seurat} > {log}
         """
 
 rule seurat_rmd_report:
@@ -278,4 +279,41 @@ rule run_demuxlet:
     shell:
         """
         /data/chenv3/chicyte_tools/demuxlet/demuxlet --group-list {input.barcode} --field GT --sam {params.bam} --vcf {input.vcf} --out {params.out} --sm-list {input.patientlist} --alpha 0 --alpha 0.5
+        """
+
+rule seurat_aggregate:
+    input:
+        rds = expand(join(workpath, "seurat", "{sample}", "seur_cite_cluster.rds"), sample=lib_samples)
+    output:
+        rds = join(workpath, "seurat", "SeuratAggregate", "multimode.integrated.rds")
+    log:
+        join("seurat", "SeuratAggregate", "seurat.log")
+    params:
+        rname = "seurat_aggregate",
+        sample = "aggregate",
+        outdir = join(workpath, "seurat", "SeuratAggregate"),
+        seurat = join("workflow", "scripts", "seurat_adt_aggregate.R"),
+    envmodules:
+        "R/4.1"
+    shell:
+        """
+        R --no-save --args {params.outdir} {genome} {input.rds} < {params.seurat} > {log}
+        """
+
+rule seurat_aggregate_rmd_report:
+    input:
+        join(workpath, "seurat", "SeuratAggregate", "multimode.integrated.rds")
+    output:
+        html = join(workpath, "seurat", "SeuratAggregate", "SeuratAggregate_seurat.html")
+    params:
+        rname = "seurat_aggregate_rmd_report",
+        sample = "Aggregate",
+        outdir = join(workpath, "seurat", "SeuratAggregate"),
+        seurat = join("workflow", "scripts", "seurat_adt_aggregate_report.Rmd"),
+        html = join(workpath, "seurat", "SeuratAggregate", "SeuratAggregate_seurat.html")
+    envmodules:
+        "R/4.1"
+    shell:
+        """
+        R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
         """
