@@ -36,8 +36,17 @@ force_cells = str_bool(                        # Force use the expected number o
     config['options']['force_cells']           # default: False
  )
 demuxlet = str_bool(
-    config['options']['demuxlet']
-)
+    config['options']['demuxlet']              # Run demuxlet analysis
+)                                              # default: False
+if 'vcf' in config['options']:
+    vcf = config['options']['vcf']
+else:
+    vcf = None
+
+if 'patient_list' in config['options']:
+    patient_list = config['options']['patient_list']
+else:
+    patient_list = None
 
 # Create a dictionary to map each lib_sample
 # to its expected number of cell counts
@@ -100,6 +109,10 @@ if len(lib_samples) > 1:
     aggr_out.append(join(workpath, "AggregatedDatasets.csv"))
     # CellRanger agg, aggregated dataset
     aggr_out.append(join(workpath, 'aggregate.complete'))
+    # Seurat aggregate analysis reports
+    # @imported from rules/cite.smk
+    aggr_out.append(join(workpath, "seurat", "SeuratAggregate", "SeuratAggregate_seurat.html"))
+
 
 demuxlet_out = []
 if demuxlet:
@@ -140,9 +153,6 @@ rule all:
         ),
         # Demuxlet rules
         demuxlet_out,
-        # Seurat aggregate analysis reports
-        # @imported fro rules/cite.smk
-        join(workpath, "seurat", "SeuratAggregate", "SeuratAggregate_seurat.html"),
 
 
 # Import rules
