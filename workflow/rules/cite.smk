@@ -34,6 +34,19 @@ def seurat_optional_params(wildcards):
     else:
         return('')
 
+def demuxlet_input(wildcards):
+    if patient_list != None:
+        return(join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', 'patient_list'))
+    else:
+        return()
+
+def demuxlet_flag(wildcards):
+    if patient_list != None:
+        return( "--sm-list " + join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', 'patient_list'))
+    else:
+        return('')
+
+
 # Rule definitions
 rule librariesCSV:
     output:
@@ -186,7 +199,7 @@ rule seurat_rmd_report:
 
 rule vcf_reorder:
     input:
-        vcf = config['options']['vcf'],
+        vcf = vcf,
         web = expand(join(workpath, f"{sample}", "outs", "web_summary.html"), sample=lib_samples)
     output:
         vcf = join(workpath, 'demuxlet', 'vcf', 'output.vcf')
@@ -234,7 +247,7 @@ rule vcf_filter_quality:
 
 rule demuxlet_patient_list:
     input:
-        config = 'demuxlet.csv'
+        config = patient_list
     output:
         patient_lists = expand(join(workpath, 'demuxlet', 'output', '{sample}', 'patient_list'), sample=lib_samples)
     params:
@@ -244,7 +257,7 @@ rule demuxlet_patient_list:
         config["tools"]["python3"]
     shell:
         """
-        python3 {params.script}
+        python3 {params.script} {input.config}
         """
 
 rule demuxlet_barcode:
@@ -262,7 +275,7 @@ rule demuxlet_barcode:
 
 rule run_demuxlet:
     input:
-        patientlist = join(workpath, 'demuxlet', 'output', '{sample}', 'patient_list'),
+        demuxlet_input,
         vcf = rules.vcf_filter_quality.output.vcf,
         barcode = rules.demuxlet_barcode.output.barcode
     output:
@@ -273,12 +286,12 @@ rule run_demuxlet:
         rname = "demuxlet",
         out = join(workpath, 'demuxlet', 'output', "{sample}", "{sample}"),
         bam = join(workpath, "{sample}", "outs", "possorted_genome_bam.bam"),
-        script = join("workflow", "scripts", "create_demuxlet_patient_list.py")
+        flag = demuxlet_flag
     envmodules:
         config["tools"]["python3"]
     shell:
         """
-        /data/chenv3/chicyte_tools/demuxlet/demuxlet --group-list {input.barcode} --field GT --sam {params.bam} --vcf {input.vcf} --out {params.out} --sm-list {input.patientlist} --alpha 0 --alpha 0.5
+        /data/chenv3/chicyte_tools/demuxlet/demuxlet --group-list {input.barcode} --field GT --sam {params.bam} --vcf {input.vcf} --out {params.out} {params.flag} --alpha 0 --alpha 0.5
         """
 
 rule seurat_aggregate:
