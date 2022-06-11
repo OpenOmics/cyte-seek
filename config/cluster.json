@@ -20,5 +20,15 @@
         "threads": "1",
         "mem": "96g",
         "time": "2-0:00:00"
+    },
+    "seurat": {
+        "threads": "16",
+        "mem": "96g",
+        "time": "0-12:00:00"
+    },
+    "seurat_aggregate": {
+        "threads": "16",
+        "mem": "96g",
+        "time": "0-12:00:00"
     }
 }
