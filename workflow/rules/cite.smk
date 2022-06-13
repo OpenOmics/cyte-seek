@@ -330,3 +330,28 @@ rule seurat_aggregate_rmd_report:
         """
         R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
         """
+
+def azimuth_input(wildcards):
+    if wildcards.sample == 'SeuratAggregate':
+        return(rules.seurat_aggregate.output.rds)
+    elif wildcards.sample in lib_samples:
+        return(rules.seurat.output.rds)
+
+rule azimuth:
+    input:
+        rds = azimuth_input
+    output:
+        rds = join(workpath, "azimuth", "{sample}", "azimuth_prediction.rds")
+    log:
+        join(workpath, "azimuth", "{sample}", "azimuth.log")
+    params:
+        rname = "azimuth",
+        sample = "{sample}",
+        outdir = join(workpath, "azimuth", "{sample}"),
+        script = join("workflow", "scripts", "azimuth_celltyping.R"),
+    envmodules:
+        "R/4.1"
+    shell:
+        """
+        R --no-save --args {params.outdir} {input.rds} {genome} pbmc < {params.script} > {log}
+        """

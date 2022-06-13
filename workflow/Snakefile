@@ -112,6 +112,7 @@ if len(lib_samples) > 1:
     # Seurat aggregate analysis reports
     # @imported from rules/cite.smk
     aggr_out.append(join(workpath, "seurat", "SeuratAggregate", "SeuratAggregate_seurat.html"))
+    aggr_out.append(join(workpath, "azimuth", "SeuratAggregate", "azimuth_prediction.rds"))
 
 
 demuxlet_out = []
@@ -153,6 +154,10 @@ rule all:
         ),
         # Demuxlet rules
         demuxlet_out,
+        expand(
+            join(workpath, "azimuth", "{sample}", "azimuth_prediction.rds"),
+            sample=lib_samples
+        ),
 
 
 # Import rules
