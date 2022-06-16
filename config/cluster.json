@@ -9,12 +9,12 @@
     "count": {
         "threads": "16",
         "mem": "96g",
-        "time": "0-12:00:00"
+        "time": "1-00:00:00"
     },
     "aggregate": {
         "threads": "16",
         "mem": "96g",
-        "time": "0-12:00:00"
+        "time": "1-00:00:00"
     },
     "run_demuxlet": {
         "threads": "1",
