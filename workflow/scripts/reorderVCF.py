@@ -20,7 +20,7 @@ def reorderVCF(vcf, bam, output = 'output.vcf'):
     while "##contig=<ID" in line:
       match = re.search(r"(?<=##contig=<ID=)chr[\dXY]+,", line)
       if match != None:
-        chr_dict[match[0].rstrip(',')] = ','.join(line.split(',')[:2]) + '>'
+        chr_dict[match[0].rstrip(',')] = ','.join(line.split('>')[0].split(',')[:2]) + '>'
       line = next(f)
 
     for chr in chromosomes:
