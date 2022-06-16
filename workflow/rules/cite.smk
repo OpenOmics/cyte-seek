@@ -35,13 +35,13 @@ def seurat_optional_params(wildcards):
         return('')
 
 def demuxlet_input(wildcards):
-    if patient_list != None:
+    if patient_list != 'None':
         return(join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', 'patient_list'))
     else:
         return()
 
 def demuxlet_flag(wildcards):
-    if patient_list != None:
+    if patient_list != 'None':
         return( "--sm-list " + join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', 'patient_list'))
     else:
         return('')
@@ -247,7 +247,7 @@ rule vcf_filter_quality:
 
 rule demuxlet_patient_list:
     input:
-        config = patient_list
+        config = demuxlet_input
     output:
         patient_lists = expand(join(workpath, 'demuxlet', 'output', '{sample}', 'patient_list'), sample=lib_samples)
     params:
