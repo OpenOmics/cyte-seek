@@ -8,7 +8,7 @@ library(RColorBrewer)
 library(future)
 library(future.apply)
 plan("multicore", workers = 8)
-options(future.globals.maxSize = 20000 * 1024^2)
+options(future.globals.maxSize = 30000 * 1024^2)
 
 args<-commandArgs(TRUE);
 workdir <- args[1]
