@@ -22,6 +22,7 @@ if (length(args) > 5) {
   demux_path <- args[6]
 }
   
+adt_thresh = 10
 
 ## ----Load Data-----------------------------------------------------------------------
 rdata <- Read10X(data_path)
@@ -39,16 +40,27 @@ setwd(workdir)
 ## ----Create Seurat Object------------------------------------------------------------
 seur <- CreateSeuratObject(counts=rdata$`Gene Expression`, project = sample)
 
-adt_assay <- CreateAssayObject(counts=rdata$`Antibody Capture`[grep('hashtag', rownames(rdata$`Antibody Capture`), value=TRUE, ignore.case=TRUE, invert=TRUE),])
-seur[["ADT"]] <- adt_assay
+
+filtered_cite <- list()
+
+adt_assay <- CreateAssayObject(counts=rdata$`Antibody Capture`[grep('HTO', grep('hashtag', rownames(rdata$`Antibody Capture`), value=TRUE, ignore.case=TRUE, invert=TRUE), value=TRUE, ignore.case=FALSE, invert=TRUE),])
+filtered_cite[['ADT']] <- names(which(apply(GetAssayData(adt_assay, slot='counts'), 1, max) <= adt_thresh))
+adt_names <- names(which(apply(GetAssayData(adt_assay, slot='counts'), 1, max) > adt_thresh))
+seur[['ADT']] <- CreateAssayObject(counts=GetAssayData(adt_assay, slot='counts')[adt_names,])
 
 hashtag = FALSE
-if (length(grep('hashtag', rownames(rdata$`Antibody Capture`), value=TRUE, ignore.case=TRUE)) > 0) {
-  hto_assay <- CreateAssayObject(counts=rdata$`Antibody Capture`[grep('hashtag', rownames(rdata$`Antibody Capture`), value=TRUE, ignore.case=TRUE),])
-  seur[["HTO"]] <- hto_assay
+if (length(as.character(c(grep('hashtag', rownames(rdata$`Antibody Capture`), value=TRUE, ignore.case=TRUE), grep('HTO', rownames(rdata$`Antibody Capture`), value=TRUE, ignore.case=FALSE)))) > 0) {
+  hto_assay <- CreateAssayObject(counts=rdata$`Antibody Capture`[as.character(c(grep('hashtag', rownames(rdata$`Antibody Capture`), value=TRUE, ignore.case=TRUE), grep('HTO', rownames(rdata$`Antibody Capture`), value=TRUE, ignore.case=FALSE))),])
+  filtered_cite[['HTO']] <- names(which(apply(GetAssayData(hto_assay, slot='counts'), 1, max) <= adt_thresh))
+  hto_names <- names(which(apply(GetAssayData(hto_assay, slot='counts'), 1, max) > adt_thresh))
+  seur[['HTO']] <- CreateAssayObject(counts=GetAssayData(hto_assay, slot='counts')[hto_names,])
   hashtag = TRUE
 }
 
+write.table(adt_thresh, 'CITE_threshold.txt', col.names = FALSE, row.names=FALSE)
+
+ddd <- data.frame(a=I(unlist(lapply(filtered_cite,paste,collapse=","))))
+write.table(ddd,file="CITE_excluded.csv", sep=',', quote=FALSE, col.names=FALSE)
 
 ## ----Calculate Mitochondrial Percentage----------------------------------------------
 if (genome == "mm10") {
@@ -172,12 +184,25 @@ if (hashtag) {
 
 ## ----Normalize HTO Data, warning=FALSE, message=FALSE, eval=hashtag------------------
 if (hashtag) {
-  hto_thresh <- 0.99
+  hto_quantile <- 0.99
   seur <- NormalizeData(seur, assay = "HTO", normalization.method = "CLR")
   seur <- ScaleData(seur, assay = "HTO", model.use = "linear")
-  seur <- HTODemux(seur, assay = "HTO", positive.quantile = hto_thresh)
-  seur$hash.ID <- factor(seur$hash.ID, levels=levels(seur$hash.ID)[order(levels(seur$hash.ID))])
-  write.table(hto_thresh, 'hto_threshold.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',') 
+  result <- tryCatch({
+    seur <- HTODemux(seur, assay = "HTO", positive.quantile = hto_quantile)
+    hashIndex <- 'hash.ID'
+    write.table(c("HTODemux", hto_quantile), 'hto_threshold.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',') 
+    c(seur, hashIndex)
+  }, error = function(err){
+    seur <- MULTIseqDemux(seur, assay = "HTO", quantile = hto_quantile)
+    hashIndex <- 'MULTI_ID'
+    write.table(c("MULTIseqDemux", hto_quantile), 'hto_threshold.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',') 
+    return(c(seur, hashIndex))
+  })
+  
+  seur <- result[[1]]
+  hashIndex <- result[[2]]
+
+  #seur[[hashIndex]] <- factor(seur[[hashIndex]], levels=levels(seur[[hashIndex]])[order(levels(seur[[hashIndex]]))])
 }
 
 ## ----Demuxlet---------------
@@ -194,7 +219,7 @@ if (demux) {
   write.table(table(seur$DROPLET.TYPE), 'demuxlet_droplet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
   
   seur.full <- seur
-  seur.AMB <- subset(seur, subset = DROPLET.TYPE == "AMB")
+  #seur.AMB <- subset(seur, subset = DROPLET.TYPE == "AMB")
   seur <- subset(seur, subset = DROPLET.TYPE == "SNG")
   
   write.table(table(seur$BEST), 'demuxlet_singlet_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
@@ -265,15 +290,27 @@ background_drops = rownames(
 background.adt.mtx = as.matrix(prot[ , background_drops])
 rownames(background.adt.mtx) <- gsub('_', '-', rownames(background.adt.mtx))
 
-#DSB normalization
 
-cells.dsb.norm.adt = DSBNormalizeProtein(
-  cell_protein_matrix = GetAssayData(seur, assay='ADT', slot='counts'), 
-  empty_drop_matrix = background.adt.mtx[rownames(GetAssayData(seur, assay='ADT', slot='counts')),], 
-  denoise.counts = FALSE, 
-  use.isotype.control = FALSE, 
-  return.stats=TRUE
-)
+#DSB normalization
+if (length(grep('isotype', rownames(GetAssayData(seur, assay='ADT', slot='counts')), ignore.case=TRUE, value=TRUE)) > 0) {
+  cells.dsb.norm.adt = DSBNormalizeProtein(
+    cell_protein_matrix = GetAssayData(seur, assay='ADT', slot='counts')[adt_names,], 
+    empty_drop_matrix = background.adt.mtx[adt_names,], 
+    denoise.counts = TRUE, 
+    use.isotype.control = TRUE, 
+    isotype.control.name.vec = grep('isotype', adt_names, ignore.case=TRUE, value=TRUE),
+    return.stats=TRUE
+  )
+  write.table(grep('isotype', rownames(GetAssayData(seur, assay='ADT', slot='counts')), ignore.case=TRUE, value=TRUE), 'dsbnorm_isotype.csv', sep=',', row.names = FALSE, col.names=FALSE, quote=FALSE)
+}else {
+  cells.dsb.norm.adt = DSBNormalizeProtein(
+    cell_protein_matrix = GetAssayData(seur, assay='ADT', slot='counts'), 
+    empty_drop_matrix = background.adt.mtx[rownames(GetAssayData(seur, assay='ADT', slot='counts')),], 
+    denoise.counts = FALSE, 
+    use.isotype.control = FALSE, 
+    return.stats=TRUE
+  )
+}
 
 
 ## ----Normalize HTO Data, warning=FALSE, message=FALSE, eval=hashtag------------------
@@ -291,14 +328,14 @@ if (hashtag) {
 ## ----HTO Ridge Plots, results='show', eval=hashtag, fig.width=12, fig.height=9-------
   png('HTO_Ridge_Plot.png', units='in', width=12, height=9, res=300)
   for (i in seq(1,length(rownames(seur[["HTO"]])), by=25)) {
-    print(RidgePlot(seur, sort(rownames(seur[['HTO']]))[i:min(i+24,length(rownames(seur[['HTO']])))], assay="HTO", ncol=min(5, ceiling(sqrt(length(rownames(seur[['HTO']]))-(i-1)))), group.by='hash.ID'))
+    print(RidgePlot(seur, sort(rownames(seur[['HTO']]))[i:min(i+24,length(rownames(seur[['HTO']])))], assay="HTO", ncol=min(5, ceiling(sqrt(length(rownames(seur[['HTO']]))-(i-1)))), group.by=hashIndex))
   }
   
   png("UMAP_RNA_HTO.png", width=1800, height=1600, res = 300)
-  DimPlot(seur, reduction='rna.umap', group.by='hash.ID', label = TRUE) + ggtitle("RNA")
+  DimPlot(seur, reduction='rna.umap', group.by=hashIndex, label = TRUE) + ggtitle("RNA")
   dev.off()
   
-  write.table(table(seur$hash.ID), 'hto_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
+  write.table(table(seur[[hashIndex]]), 'hto_counts.csv', row.names=FALSE, col.names=FALSE, quote=FALSE, sep=',')
 }
 
 
@@ -377,7 +414,6 @@ dev.off()
 
 
 ## ----RidgePlots of ADT, echo=FALSE, warning=FALSE, message=FALSE, result='hide'------
-adt_thresh = 0
 suppressWarnings(dir.create('ADT'))
 #pdf('./Ridgeplots.pdf', width=21, height=21)
 count <- 1
@@ -389,7 +425,7 @@ for (i in seq(1,length(names(which(rowSums(seur[['ADT']]) > adt_thresh))), by=25
 }
 #dev.off()
 
-write.table(adt_thresh, 'ADT_threshold.txt', col.names = FALSE, row.names=FALSE)
+
 
 if (length(which(rowSums(seur[['ADT']]) <= adt_thresh)) > 0){
   write.table(sort(names(which(rowSums(seur[['ADT']]) <= adt_thresh))), 'ADT_excluded.csv', quote=FALSE, sep=',', col.names = FALSE, row.names = FALSE)
@@ -433,6 +469,9 @@ cat("## Differential Expression - MAST {.tabset}")
    })
  }
 
+png('DEG/DEG_Top5_Cluster_Heatmap.png', width=600+100*length(levels(seur$wsnn_res.0.8)), height=300+150*length(levels(seur$wsnn_res.0.8)), res=300)
+DoHeatmap(seur, features=as.vector(sapply(c(0:(length(identities) - 1)), function(x) read.table(paste0('DEG/', sample, '_', x, '_markers.txt'), header=TRUE)$Genes[1:5])), assay = "RNA", slot="count")+ scale_fill_gradientn(colors = c("blue", "white", "red"))
+dev.off()
 
 ## ----Save RDS Object-----------------------------------------------------------------
 saveRDS(seur, file="seur_cite_cluster.rds")
