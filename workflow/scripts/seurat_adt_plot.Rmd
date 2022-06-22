@@ -9,6 +9,7 @@ date: "`r Sys.Date()`"
 params: 
   workdir: seurat
   sample: sample_name
+  celltype: NA
 ---
 
 ```{r setup, include=FALSE}
@@ -19,13 +20,17 @@ options(knitr.graphics.error = FALSE)
 ```{r Packages, message=FALSE}
 library(knitr)
 library(stringr)
+library(flextable)
+library(kableExtra)
 # library(scater)
 ```
 
 ```{r Input, include=FALSE}
 workdir <- params$workdir
 sample <- params$sample
+celltype <- params$celltype
 hashtag <- FALSE
+demux <- FALSE
 ```
 
 Working Directory: `r workdir`
@@ -38,6 +43,20 @@ knitr::opts_knit$set(root.dir = workdir)
 ```
 
 ## Sample QC
+
+```{r, eval=file.exists("CITE_excluded.csv")}
+cat("### CITE-Seq Features Filtered\n\n")
+adt_thresh <- read.table('CITE_threshold.txt')[[1]]
+genes <- read.csv('CITE_excluded.csv', header=FALSE, row.names = 1)
+
+cat("Some features have been excluded because they do not meet a maximum expression threshold of ", adt_thresh, ".")
+
+for (i in sort(rownames(genes))){
+  cat("\n\n#### ", i, "\n\n")
+  cat(paste('-', sort(setdiff(as.character(genes[i,]), ""))), sep = '\n')
+}
+
+```
 
 ### Pre-Filter QC Plots {.tabset}
 
@@ -89,7 +108,6 @@ cat("HTO Read Count Upper Threshold: ", sprintf("%.2f", exp(thresh$nCount_HTO_hi
 
 Total cells filtered: `r thresh$numCellsRemove`
 
-
 ### Post-Filter QC Plots {.tabset}
 
 #### Per Cell Gene Scatter Plots 
@@ -115,9 +133,38 @@ include_graphics(file.path(workdir, 'PostFilter_VlnPlot_HTO.png'))
 
 ```
 
+```{r Demuxlet Counts, results='asis', eval=file.exists('demuxlet_singlet_counts.csv')}
+demux <- TRUE
+cat("## Demuxlet Results")
+cat("\n\n")
+singlet <- read.table('demuxlet_singlet_counts.csv', sep=',', header = FALSE)
+colnames(singlet) <- c("Patient", "Cell Count")
+droplet <- read.table('demuxlet_droplet_counts.csv', sep=',', header = FALSE)
+colnames(droplet) <- c("Droplet Type", "Cell Count")
+droplet %>% flextable() %>% autofit()
+singlet %>% flextable() %>% autofit()
+##umap plot of group and split by genotype
+##and a table outlining the cell numbers in each
+
+#kable(droplet) %>%
+#  kable_styling(full_width = FALSE, position = "float_left")
+#kable(singlet) %>%
+#  kable_styling(full_width = FALSE, position = "left")
+
+include_graphics(file.path(workdir, 'UMAP_RNA_Full_Droplet.png'))
+```
+
 
 ```{r, eval=hashtag}
 cat("## Hashtag Multiplexing\n\n")
+if (demux) {
+  cat("Hashtag demultiplexing was performed prior to filtering based on demuxlet results\n\n")
+}
+cat("HTO Threshold used was ", as.numeric(read.table('hto_threshold.csv')[[1]][[2]]), "using the method", read.table('hto_threshold.csv')[[1]][[1]], "\n\n")
+hto <- read.table('hto_counts.csv', sep=',', header = FALSE)
+colnames(hto) <- c("Hashtag", "Cell Count")
+hto %>% flextable() %>% autofit()
+
 cat("### HTO Ridge Plot")
 cat("\n\n")
 include_graphics(file.path(workdir, 'HTO_Ridge_Plot.png'))
@@ -128,6 +175,9 @@ include_graphics(file.path(workdir, 'HTO_Ridge_Plot.png'))
 ### RNA-Based 
 ```{r}
 include_graphics(file.path(workdir, 'UMAP_RNA.png'))
+if (demux) {
+  include_graphics(file.path(workdir, 'UMAP_RNA_Demux_Split_Raster.png'))
+}
 ```
 
 ### ADT-Based
@@ -153,18 +203,8 @@ include_graphics(file.path(workdir, 'UMAP_MultiModal_RNA_ADT.png'))
 ## ADT Expression 
 Ridge plots have been generated for each of the ADT included in the data. The following is the first of these sets of images.
 
-```{r, eval=file.exists("ADT_excluded.csv")}
-
-adt_thresh <- read.table('ADT_threshold.txt')[[1]]
-genes <- read.csv('ADT_excluded.csv', header=FALSE)
-
-cat("Some ADT features have been excluded because they do not meet an expression threshold of ", adt_thresh, ".")
-cat("\n\nThey are: \n\n")
-cat(paste('-', sort(genes$V1)), sep = '\n')
-```
-
 ```{r}
-myimages<-list.files(file.path(workdir, "ADT/", pattern = ".png", full.names = TRUE))
+myimages<-list.files(file.path(workdir, "ADT/"), pattern = ".png", full.names = TRUE)
 include_graphics(file.path(workdir, 'ADT/ADT_Ridgeplots_1.png'))
 ```
 
@@ -174,7 +214,7 @@ filenames <- Sys.glob(file.path(workdir, 'DEG/*txt'))
 clusters <- list()
 for (filename in str_sort(filenames, numeric=TRUE)) {
   file_split <- strsplit(basename(filename), '_')[[1]]
-  cluster <- file_split[2:(length(file_split)-1)]
+  cluster <- file_split[length(file_split)-1]
   Markers <- read.table(filename, header=TRUE)
   clusters[[cluster]] <- Markers
 }
@@ -189,5 +229,52 @@ output <- lapply(names(clusters)[1:(length(clusters)-1)], degTable)
 cat("### ", names(clusters)[[length(clusters)]])
 knitr::knit_print(DT::datatable(clusters[[length(clusters)]], height='100%', width='100%'))
 
+cat ("\n\n")
 ```
 
+
+## Marker Gene Heatmap
+
+Top 5 differentially expressed genes per cluster sorted by p-value
+```{r}
+include_graphics(file.path(workdir, 'DEG/DEG_Top5_Cluster_Heatmap.png'))
+```
+
+```{r Cell Type Results, results='asis', out.height="80%", eval=celltype != 'NA'}
+cat("## Cell Type Prediction {.tabset}")
+cat("\n\n")
+
+cat("### Level 1")
+cat("\n", '<br>', "\n\n")
+
+calls <- read.table(list.files(file.path(celltype), pattern="l1.csv", full.names=TRUE), sep=',', header=FALSE)
+colnames(calls) <- c("Cell Type", "Cell Count")
+calls %>% flextable() %>% autofit()
+
+myimages<-list.files(file.path(celltype), pattern = "l1.png", full.names = TRUE)
+include_graphics(myimages[[2]])
+include_graphics(myimages[[1]])
+
+cat ("\n\n")
+cat("### Level 2")
+cat("\n\n")
+calls <- read.table(list.files(file.path(celltype), pattern="l2.csv", full.names=TRUE), sep=',', header=FALSE)
+colnames(calls) <- c("Cell Type", "Cell Count")
+calls %>% flextable()# %>% autofit()
+
+myimages<-list.files(file.path(celltype), pattern = "l2.png", full.names = TRUE)
+include_graphics(myimages)
+
+cat ("\n\n")
+cat("### Level 3")
+cat("\n\n")
+calls <- read.table(list.files(file.path(celltype), pattern="l3.csv", full.names=TRUE), sep=',', header=FALSE)
+colnames(calls) <- c("Cell Type", "Cell Count")
+calls %>% flextable() %>% autofit()
+
+myimages<-list.files(file.path(celltype), pattern = "l3.png", full.names = TRUE)
+include_graphics(myimages)
+
+```
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

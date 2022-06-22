@@ -9,13 +9,13 @@ from snakemake.utils import R
 
 # Local imports
 from scripts.common import (
-    provided, 
+    provided,
     references,
     str_bool
 )
 
-# Set deafult interpret 
-# for shell directive 
+# Set deafult interpret
+# for shell directive
 shell.executable("/bin/bash")
 
 # Global workflow variables
@@ -23,7 +23,7 @@ configfile: 'config.json'
 samples  = config['samples']                   # Base name of input samples
 lib_samples = list(config['libraries'].keys()) # Libraries file samples
 inputs = config['options']['input']            # List of raw input files
-workpath = config['project']['workpath']       # Pipeline's output directory 
+workpath = config['project']['workpath']       # Pipeline's output directory
 tmpdir = config['options']['tmp_dir']          # Temporary directory
 genome = config['options']['genome']           # User selected reference genome
 features = config['options']['features']       # Features files for cellranger
@@ -35,6 +35,18 @@ pre_mrna = str_bool(                           # Use introns for pre mRNA,
 force_cells = str_bool(                        # Force use the expected number of cells,
     config['options']['force_cells']           # default: False
  )
+demuxlet = str_bool(
+    config['options']['demuxlet']              # Run demuxlet analysis
+)                                              # default: False
+if 'vcf' in config['options']:
+    vcf = config['options']['vcf']
+else:
+    vcf = None
+
+if 'patient_list' in config['options']:
+    patient_list = config['options']['patient_list']
+else:
+    patient_list = None
 
 # Create a dictionary to map each lib_sample
 # to its expected number of cell counts
@@ -52,11 +64,11 @@ elif type(num_cells) == str:
         expected_counts = num_cells.split(' ')
         expected_counts = [c.strip() for c in expected_counts]
     else:
-        # Only one value provided, set that 
+        # Only one value provided, set that
         # as the default for each sample
         expected_counts = [num_cells] * len(lib_samples)
 
-# Sanity check to see if each 
+# Sanity check to see if each
 # sample has an expected count
 if len(expected_counts) != len(lib_samples):
     raise ValueError(
@@ -65,9 +77,9 @@ if len(expected_counts) != len(lib_samples):
         'of samples in the libraries file!'
     )
 
-# Assumes that each index in the list matches the 
+# Assumes that each index in the list matches the
 # same order of lib_samples they provided at in the
-# libraries csv file, i.e. it should match the order 
+# libraries csv file, i.e. it should match the order
 # of config['libraries'].keys()
 for i in range(len(expected_counts)):
     sample = lib_samples[i]
@@ -82,7 +94,7 @@ for p in input_paths:
         input_paths_set.append(p)
 
 # Read in resource information,
-# containing information about 
+# containing information about
 # threads, mem, walltimes, etc.
 # TODO: Add handler for when the
 # mode is set to local.
@@ -97,6 +109,18 @@ if len(lib_samples) > 1:
     aggr_out.append(join(workpath, "AggregatedDatasets.csv"))
     # CellRanger agg, aggregated dataset
     aggr_out.append(join(workpath, 'aggregate.complete'))
+    # Seurat aggregate analysis reports
+    # @imported from rules/cite.smk
+    aggr_out.append(join(workpath, "seurat", "SeuratAggregate", "SeuratAggregate_seurat.html"))
+    aggr_out.append(join(workpath, "azimuth", "SeuratAggregate", "azimuth_prediction.rds"))
+
+
+demuxlet_out = []
+if demuxlet:
+    # Processed vcf for demuxlet
+    # @imported from rules/cite.smk
+    demuxlet_out.append(join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered.recode.vcf'))
+    demuxlet_out.append(expand(join(workpath, 'demuxlet', 'output', '{sample}', '{sample}.best'), sample=lib_samples))
 
 # Final ouput files of the pipeline
 rule all:
@@ -105,19 +129,19 @@ rule all:
         # for cellranger count
         # @imported from rules/cite.smk
         expand(
-            join(workpath, "{sample}_libraries.csv"), 
+            join(workpath, "{sample}_libraries.csv"),
             sample=lib_samples
         ),
         # CellRanger counts, summary report
-        # @imported from rules/cite.smk 
+        # @imported from rules/cite.smk
         expand(
-            join(workpath, "{sample}", "outs", "web_summary.html"), 
+            join(workpath, "{sample}", "outs", "web_summary.html"),
             sample=lib_samples
         ),
         # Generate Summaries File, summary report
         # @imported from rules/cite.smk
         expand(
-            join(workpath, "finalreport", "summaries", "{sample}_web_summary.html"), 
+            join(workpath, "finalreport", "summaries", "{sample}_web_summary.html"),
             sample=lib_samples
         ),
         # Aggregate rules
@@ -128,6 +152,13 @@ rule all:
             join(workpath, "seurat", "{sample}", "{sample}_seurat.html"),
             sample=lib_samples
         ),
+        # Demuxlet rules
+        demuxlet_out,
+        expand(
+            join(workpath, "azimuth", "{sample}", "azimuth_prediction.rds"),
+            sample=lib_samples
+        ),
+
 
 # Import rules
 include: join("rules", "common.smk") # Rules common to all pipelines
