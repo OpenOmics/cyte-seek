@@ -14,7 +14,8 @@ args<-commandArgs(TRUE);
 workdir <- args[1]
 genome <- args[2]
 
-files <- args[3:length(args)]
+ref_samples <- args[3]
+files <- args[4:length(args)]
 
 data.list <- lapply(files, readRDS)
 
@@ -25,24 +26,38 @@ dir.create(workdir, recursive=TRUE)
 ## ----Change Working Directory, include=FALSE-----------------------------------------
 setwd(workdir)
 
-#data.list <- lapply(X = data.list, FUN = function(x) {
-#  x <- NormalizeData(x)
-#  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
-#})
+data.list <- lapply(X = data.list, FUN = function(x) {
+  if ('SCT' %in% names(x)) {
+    x[['SCT']] <- NULL
+  }
+  x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
 
-data.list <- lapply(X = data.list, FUN = SCTransform)
+#data.list <- lapply(X = data.list, FUN = SCTransform)
 
 reference.features <- SelectIntegrationFeatures(object.list = data.list, nfeatures = 3000)
 
-data.list <- PrepSCTIntegration(object.list = data.list, anchor.features = reference.features)
+#data.list <- PrepSCTIntegration(object.list = data.list, anchor.features = reference.features)
+
+data.list <- lapply(X = data.list, FUN = function(x) {
+  x <- ScaleData(x, features = reference.features, verbose = FALSE)
+  x <- RunPCA(x, features = reference.features, verbose = FALSE)
+})
 
 totalcells <- sum(sapply(data.list, function(x) dim(x)[[2]]))
 future.seed=TRUE
-reference.anchors = FindIntegrationAnchors(object.list = data.list, reduction = "rpca", dims = 1:30, anchor.features = reference.features, normalization.method = "SCT")
 
-combinedObj.integrated = IntegrateData(anchorset = reference.anchors, new.assay.name = "integratedRNA", dims = 1:30, normalization.method = "SCT")
+ref_index <- sapply(strsplit(ref_samples, ',')[[1]], function(x) for (j in 1:length(data.list)) { if (x == data.list[[j]]@project.name) { return(j) }})
+#reference.anchors = FindIntegrationAnchors(object.list = data.list, reduction = "rpca", dims = 1:30, anchor.features = reference.features, normalization.method = "SCT")
+reference.anchors <- FindIntegrationAnchors(object.list = data.list, reference = ref_index, reduction = "rpca",
+                                  dims = 1:50, normalization.method = "LogNormalize")
 
-#combinedObj.integrated = ScaleData(combinedObj.integrated, verbose = FALSE)
+future.seed=TRUE
+#combinedObj.integrated = IntegrateData(anchorset = reference.anchors, new.assay.name = "integratedRNA", dims = 1:30, normalization.method = "SCT")
+combinedObj.integrated = IntegrateData(anchorset = reference.anchors, new.assay.name = "integratedRNA", dims = 1:50,  normalization.method = "LogNormalize")
+
+combinedObj.integrated = ScaleData(combinedObj.integrated, verbose = FALSE)
 combinedObj.integrated = RunPCA(combinedObj.integrated, verbose = FALSE)
 combinedObj.integrated = RunTSNE(combinedObj.integrated, reduction.name = 'rna.tsne', reduction.key = 'rnaTSNE_', dims = 1:30)
 combinedObj.integrated <- RunUMAP(combinedObj.integrated, reduction = 'pca', dims = 1:30, assay = 'RNA', 
@@ -197,3 +212,4 @@ for (cluster in c(0:(length(identities) - 1))) {
     }
   })
 }
+print('DONE')

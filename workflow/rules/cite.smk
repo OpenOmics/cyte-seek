@@ -306,11 +306,12 @@ rule seurat_aggregate:
         sample = "aggregate",
         outdir = join(workpath, "seurat", "SeuratAggregate"),
         seurat = join("workflow", "scripts", "seurat_adt_aggregate.R"),
+        sample_ref = lib_samples[0]
     envmodules:
         "R/4.1"
     shell:
         """
-        R --no-save --args {params.outdir} {genome} {input.rds} < {params.seurat} > {log}
+        R --no-save --args {params.outdir} {genome} {params.sample_ref} {input.rds} < {params.seurat} > {log}
         """
 
 rule seurat_aggregate_rmd_report:
