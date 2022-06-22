@@ -21,7 +21,7 @@ options(knitr.graphics.error = FALSE)
 library(knitr)
 library(stringr)
 library(flextable)
-library(kableExtra)
+# library(kableExtra)
 # library(scater)
 ```
 

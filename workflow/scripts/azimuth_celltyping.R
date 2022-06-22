@@ -1,6 +1,6 @@
 library(Seurat)
-library(Azimuth)
-library(SeuratData)
+library(Azimuth, lib.loc='/home/chenv3/R/4.1/library/')
+library(SeuratData, lib.loc='/home/chenv3/R/4.1/library/')
 library(ggplot2)
 
 
@@ -13,7 +13,8 @@ ref <- "pbmc"
 
 seur <- readRDS(rds_path)
 if (ref == 'pbmc' & genome == 'hg38'){
-  seur <- RunAzimuth(seur, reference="pbmcref")
+#  seur <- RunAzimuth(seur, reference="pbmcref")
+  seur <- RunAzimuth(seur, reference="/data/NHLBI_IDSS/dev/CHI/Azimuth/pbmcref/")
 }
 
 groups <- grep('score', grep('predicted.celltype', names(seur@meta.data), value=TRUE), value=TRUE, invert=TRUE)
