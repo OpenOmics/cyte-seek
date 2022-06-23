@@ -76,6 +76,7 @@ RUN apt-get update \
         git \
         gnupg \
         gzip \
+        libcairo2-dev \
         libfontconfig1-dev \
         libgeos-dev \
         libhdf5-dev \
@@ -113,7 +114,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD5
     && apt-get -y install r-base r-base-core r-recommended r-base-dev \
     && apt-get -y install libcurl4-openssl-dev libssl-dev libboost-dev libxml2-dev
 # Install required R packages
-# Seurat (needs libgeos-dev), flextable (needs libfontconfig1-dev), Azimuth (libhdf5-dev)
+# Seurat (needs libgeos-dev), flextable (needs libfontconfig1-dev, libcairo2-dev), Azimuth (libhdf5-dev)
 # CRAN packages
 RUN Rscript -e 'install.packages(c("DT", "RColorBrewer", "Seurat"), repos="http://cran.r-project.org")'
 RUN Rscript -e 'install.packages(c("argparse", "devtools", "dplyr"), repos="http://cran.r-project.org")'
