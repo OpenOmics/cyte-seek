@@ -1,8 +1,8 @@
 {
     "references": {
         "hg38": {
-            "transcriptome": "/data/NCBR/references/chicyte/refdata-gex-GRCh38-2020-A/",
-            "blacklist": "/data/NCBR/projects/NCBR-161/OldData/ENCFF356LFX.bed"
+            "transcriptome": "/data/OpenOmics/references/chicyte/hg38/refdata-gex-GRCh38-2020-A/",
+            "blacklist": "/data/OpenOmics/references/chicyte/hg38/ENCFF356LFX.bed"
         },
         "mm10": {
             "transcriptome": "/fake/path/to/placeholder/until/install/refdata-gex-mm10-2020-A"
