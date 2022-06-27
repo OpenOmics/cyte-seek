@@ -350,9 +350,13 @@ rule azimuth:
         sample = "{sample}",
         outdir = join(workpath, "azimuth", "{sample}"),
         script = join("workflow", "scripts", "azimuth_celltyping.R"),
+        azimuth_ref = = config["references"][genome]["azimuth_ref"],
+        rlibs = config["tools"]["r_libs"]["ext"]
     envmodules:
         "R/4.1"
     shell:
         """
-        R --no-save --args {params.outdir} {input.rds} {genome} pbmc < {params.script} > {log}
+        # Add external packages to R .libPath
+        export R_LIBS_USER="{params.rlibs}"
+        R --no-save --args {params.outdir} {input.rds} {genome} pbmc "{params.azimuth_ref}" < {params.script} > {log}
         """

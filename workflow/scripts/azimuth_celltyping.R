@@ -1,20 +1,21 @@
 library(Seurat)
-library(Azimuth, lib.loc='/home/chenv3/R/4.1/library/')
-library(SeuratData, lib.loc='/home/chenv3/R/4.1/library/')
+library(Azimuth)
+library(SeuratData)
 library(ggplot2)
 
 
-args<-commandArgs(TRUE);
+args <- commandArgs(TRUE);
 workdir <- args[1]
 rds_path <- args[2]
 genome <- args[3]
-ref <- "pbmc"
+ref <- args[4]
+azimuth_ref <- args[5]
 
 
 seur <- readRDS(rds_path)
-if (ref == 'pbmc' & genome == 'hg38'){
-#  seur <- RunAzimuth(seur, reference="pbmcref")
-  seur <- RunAzimuth(seur, reference="/data/NHLBI_IDSS/dev/CHI/Azimuth/pbmcref/")
+if (ref == 'pbmc' & genome == 'hg38' & (!is.na(azimuth_ref) & azimuth_ref != '')){
+  # reference = "/data/OpenOmics/references/chicyte/hg38/Azimuth/pbmcref/"
+  seur <- RunAzimuth(seur, reference = azimuth_ref)
 }
 
 groups <- grep('score', grep('predicted.celltype', names(seur@meta.data), value=TRUE), value=TRUE, invert=TRUE)
