@@ -4,7 +4,7 @@ library(MAST)
 library(ggplot2)
 library(gridExtra)
 library(RColorBrewer)
-library(dsb, lib.loc="/home/chenv3/R/4.1/library")
+library(dsb)
 # library(scater)
 
 

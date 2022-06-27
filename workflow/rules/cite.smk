@@ -171,11 +171,14 @@ rule seurat:
         data = join(workpath, "{sample}/outs/filtered_feature_bc_matrix/"),
         rawdata = join(workpath, "{sample}/outs/raw_feature_bc_matrix/"),
         seurat = join("workflow", "scripts", "seurat_adt.R"),
+        rlibs = config["r_libs"]["ext"],
         optional = seurat_optional_params
     envmodules:
         "R/4.1"
     shell:
         """
+        # Add external packages to R .libPath
+        export R_LIBS_USER="{params.rlibs}"
         R --no-save --args {params.outdir} {params.data} {params.rawdata} {params.sample} {genome} {params.optional} < {params.seurat} > {log}
         """
 
@@ -351,7 +354,7 @@ rule azimuth:
         outdir = join(workpath, "azimuth", "{sample}"),
         script = join("workflow", "scripts", "azimuth_celltyping.R"),
         azimuth_ref = = config["references"][genome]["azimuth_ref"],
-        rlibs = config["tools"]["r_libs"]["ext"]
+        rlibs = config["r_libs"]["ext"],
     envmodules:
         "R/4.1"
     shell:
