@@ -470,7 +470,7 @@ cat("## Differential Expression - MAST {.tabset}")
  }
 
 png('DEG/DEG_Top5_Cluster_Heatmap.png', width=600+100*length(levels(seur$wsnn_res.0.8)), height=300+150*length(levels(seur$wsnn_res.0.8)), res=300)
-DoHeatmap(seur, features=as.vector(sapply(c(0:(length(identities) - 1)), function(x) read.table(paste0('DEG/', sample, '_', x, '_markers.txt'), header=TRUE)$Genes[1:5])), assay = "RNA", slot="count")+ scale_fill_gradientn(colors = c("blue", "white", "red"))
+DoHeatmap(seur, features=setdiff(unlist(sapply(c(0:(length(identities) - 1)), function(x) if(file.exists(paste0('DEG/', sample, '_', x, '_markers.txt'))) { read.table(paste0('DEG/', sample, '_', x, '_markers.txt'), header=TRUE)$Genes[1:5]}else{""})), c("", NA)), assay = "RNA", slot="count")+ scale_fill_gradientn(colors = c("blue", "white", "red"))
 dev.off()
 
 ## ----Save RDS Object-----------------------------------------------------------------
