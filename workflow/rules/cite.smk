@@ -290,11 +290,11 @@ rule run_demuxlet:
         out = join(workpath, 'demuxlet', 'output', "{sample}", "{sample}"),
         bam = join(workpath, "{sample}", "outs", "possorted_genome_bam.bam"),
         flag = demuxlet_flag
-    envmodules:
-        config["tools"]["python3"]
+    # envmodules: config["tools"]["python3"]
+    container: config["images"]["cite_base"]
     shell:
         """
-        /data/chenv3/chicyte_tools/demuxlet/demuxlet --group-list {input.barcode} --field GT --sam {params.bam} --vcf {input.vcf} --out {params.out} {params.flag} --alpha 0 --alpha 0.5
+        demuxlet --group-list {input.barcode} --field GT --sam {params.bam} --vcf {input.vcf} --out {params.out} {params.flag} --alpha 0 --alpha 0.5
         """
 
 rule seurat_aggregate:
