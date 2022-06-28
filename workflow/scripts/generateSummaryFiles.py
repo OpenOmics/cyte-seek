@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
@@ -13,6 +13,7 @@ from shutil import copyfile
 
 metricsPath = 'finalreport/'
 summaryPath = 'finalreport/summaries/'
+
 def main(arg1='metric_summary'):
     createMetricsSummary(arg1)
     copyWebSummary()
@@ -22,7 +23,7 @@ def createMetricsSummary(arg1):
         os.makedirs(metricsPath)
     except OSError:
         if not os.path.isdir(metricsPath):
-            raise
+            raise Exception('Error: provided metricsPath, {}, is not a path!'.format(metricsPath))
     files = glob.glob('./*/outs/metrics_summary.csv')
     #Filter out aggregate runs if they exist
     files = [i for i in files if i.split('/')[1] in [j.split('/')[1] for j in glob.glob('./*/*COUNTER*')]]
@@ -40,6 +41,7 @@ def createMetricsSummary(arg1):
 
     row = 1
     samples = list()
+    header = ''
     for filename in files:
         with open(filename, 'r') as csvfile:
             f = csv.reader(csvfile, delimiter=',', quotechar='"')
@@ -74,7 +76,7 @@ def copyWebSummary():
         os.makedirs(summaryPath)
     except OSError:
         if not os.path.isdir(summaryPath):
-            raise
+            raise Exception('Error: provided summaryPath, {}, is not a path!'.format(summaryPath))
     files = glob.glob('./*/outs/web_summary.html')
     for filename in files:
     	copyfile(filename, '%s/%s_web_summary.html' % (summaryPath, filename.split('/')[1]))
