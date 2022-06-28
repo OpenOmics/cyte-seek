@@ -130,7 +130,7 @@ rule aggregateCSV:
         aggregate = join("workflow", "scripts", "generateAggregateCSV.py"),
     shell:
         """
-        python2 {params.aggregate} {params.outdir}
+        python {params.aggregate} {params.outdir}
         """
 
 
