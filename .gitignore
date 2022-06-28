@@ -160,5 +160,7 @@ site/
 # GNU Parallel
 .parallel/
 
-# Testing script
+# Testing script and test 
+# output directories 
 test.sh
+test_*/
