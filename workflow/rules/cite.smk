@@ -114,7 +114,7 @@ rule summaryFiles:
         summarize = join("workflow", "scripts", "generateSummaryFiles.py"),
     shell:
         """
-        python2 {params.summarize}
+        python {params.summarize}
         """
 
 
