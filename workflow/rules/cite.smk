@@ -22,11 +22,13 @@ def count_expect_force(wildcards):
     else:
         return('--expect-cells')
 
+
 def demuxlet_analysis(wildcards):
     if demuxlet:
         return(join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', f'{wildcards.sample}.best'))
     else:
         return()
+
 
 def seurat_optional_params(wildcards):
     if demuxlet:
@@ -34,17 +36,26 @@ def seurat_optional_params(wildcards):
     else:
         return('')
 
+
 def demuxlet_input(wildcards):
     if patient_list != 'None':
         return(join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', 'patient_list'))
     else:
         return()
 
+
 def demuxlet_flag(wildcards):
     if patient_list != 'None':
         return( "--sm-list " + join(workpath, 'demuxlet', 'output', f'{wildcards.sample}', 'patient_list'))
     else:
         return('')
+
+
+def azimuth_input(wildcards):
+    if wildcards.sample == 'SeuratAggregate':
+        return(rules.seurat_aggregate.output.rds)
+    elif wildcards.sample in lib_samples:
+        return(rules.seurat.output.rds)
 
 
 # Rule definitions
@@ -56,6 +67,7 @@ rule librariesCSV:
         fastq = ",".join(input_paths_set),
         libraries = libraries,
         create_libs = join("workflow", "scripts", "create_library_files.py"),
+    container: config["images"]["cite_base"]
     shell:
         """
         python {params.create_libs} \\
@@ -81,8 +93,7 @@ rule count:
         transcriptome = config["references"][genome]["transcriptome"],
         premrna = count_premrna,
         cells_flag = count_expect_force
-    envmodules:
-        config["tools"]["cellranger"]
+    envmodules: config["tools"]["cellranger"]
     shell:
         """
         # Remove output directory
@@ -112,6 +123,7 @@ rule summaryFiles:
         rname = "sumfile",
         batch = "-l nodes=1:ppn=1",
         summarize = join("workflow", "scripts", "generateSummaryFiles.py"),
+    container: config["images"]["cite_base"]
     shell:
         """
         python {params.summarize}
@@ -128,6 +140,7 @@ rule aggregateCSV:
         batch = "-l nodes=1:ppn=1",
         outdir = workpath,
         aggregate = join("workflow", "scripts", "generateAggregateCSV.py"),
+    container: config["images"]["cite_base"]
     shell:
         """
         python {params.aggregate} {params.outdir}
@@ -145,16 +158,16 @@ rule aggregate:
     params:
         rname = "agg",
         batch = "-l nodes=1:ppn=16,mem=96gb",
-    envmodules:
-        config["tools"]["cellranger"]
+    envmodules: config["tools"]["cellranger"]
     shell:
         """
         cellranger aggr \\
             --id=AggregatedDatasets \\
             --csv={input.csv} \\
             --normalize=mapped \\
-        2>{log.err} 1>{log.log}
+        2> {log.err} 1> {log.log}
         """
+
 
 rule seurat:
     input:
@@ -173,14 +186,22 @@ rule seurat:
         seurat = join("workflow", "scripts", "seurat_adt.R"),
         rlibs = config["r_libs"]["ext"],
         optional = seurat_optional_params
-    envmodules:
-        "R/4.1"
+    # envmodules: "R/4.1"
+    container: config["images"]["cite_base"]
     shell:
         """
         # Add external packages to R .libPath
         export R_LIBS_USER='{params.rlibs}'
-        R --no-save --args {params.outdir} {params.data} {params.rawdata} {params.sample} {genome} {params.optional} < {params.seurat} > {log}
+        R --no-save --args \\
+            {params.outdir} \\
+            {params.data} \\
+            {params.rawdata} \\
+            {params.sample} \\
+            {genome} \\
+            {params.optional} \\
+        < {params.seurat} > {log}
         """
+
 
 rule seurat_rmd_report:
     input:
@@ -193,12 +214,13 @@ rule seurat_rmd_report:
         outdir = join(workpath, "seurat/{sample}"),
         seurat = join("workflow", "scripts", "seurat_adt_plot.Rmd"),
         html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html")
-    envmodules:
-        "R/4.1"
+    # envmodules: "R/4.1"
+    container: config["images"]["cite_base"]
     shell:
         """
         R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
         """
+
 
 rule vcf_reorder:
     input:
@@ -210,12 +232,16 @@ rule vcf_reorder:
         rname = "vcf_reorder",
         reorder = join("workflow", "scripts", "reorderVCF.py"),
         bam = expand(join(workpath, "{sample}", "outs", "possorted_genome_bam.bam"), sample=lib_samples)[0]
-    envmodules:
-        config["tools"]["python3"]
+    # envmodules: config["tools"]["python3"]
+    container: config["images"]["cite_base"]
     shell:
         """
-        python3 {params.reorder} -v {input.vcf} -b {params.bam} -o {output.vcf}
+        python3 {params.reorder} \\
+            -v {input.vcf} \\
+            -b {params.bam} \\
+            -o {output.vcf}
         """
+
 
 rule vcf_filter_blacklist:
     input:
@@ -226,12 +252,17 @@ rule vcf_filter_blacklist:
         rname = "vcf_filter_blacklist",
         blacklist = config["references"][genome]["blacklist"],
         outname = join(workpath, 'demuxlet', 'vcf', 'output.filteredblacklist')
-    envmodules:
-        "vcftools"
+    # envmodules: "vcftools"
+    container: config["images"]["cite_base"]
     shell:
         """
-        vcftools --vcf {input.vcf} --exclude-bed {params.blacklist} --recode --out {params.outname}
+        vcftools \\
+            --vcf {input.vcf} \\
+            --exclude-bed {params.blacklist} \\
+            --recode \\
+            --out {params.outname}
         """
+
 
 rule vcf_filter_quality:
     input:
@@ -241,12 +272,18 @@ rule vcf_filter_quality:
     params:
         rname = "vcf_filter_quality",
         outname = join(workpath, 'demuxlet', 'vcf', 'output.strict.filtered')
-    envmodules:
-        "vcftools"
+    # envmodules: "vcftools"
+    container: config["images"]["cite_base"]
     shell:
         """
-        vcftools --vcf {input.vcf} --minGQ 10 --max-missing 1.0 --recode --out {params.outname}
+        vcftools \\
+            --vcf {input.vcf} \\
+            --minGQ 10 \\
+            --max-missing 1.0 \\
+            --recode \\
+            --out {params.outname}
         """
+
 
 rule demuxlet_patient_list:
     input:
@@ -256,12 +293,13 @@ rule demuxlet_patient_list:
     params:
         rname = "demuxlet_patient_list",
         script = join("workflow", "scripts", "create_demuxlet_patient_list.py")
-    envmodules:
-        config["tools"]["python3"]
+    # envmodules: config["tools"]["python3"]
+    container: config["images"]["cite_base"]
     shell:
         """
         python3 {params.script} {input.config}
         """
+
 
 rule demuxlet_barcode:
     input:
@@ -271,9 +309,11 @@ rule demuxlet_barcode:
     params:
         rname = "demuxlet_barcode",
         barcodezip = join(workpath, "{sample}", "outs", "filtered_feature_bc_matrix", "barcodes.tsv.gz")
+    container: config["images"]["cite_base"]
     shell:
         """
-        gunzip -c {params.barcodezip} > {output.barcode}
+        gunzip -c {params.barcodezip} \\
+        > {output.barcode}
         """
 
 rule run_demuxlet:
@@ -294,8 +334,16 @@ rule run_demuxlet:
     container: config["images"]["cite_base"]
     shell:
         """
-        demuxlet --group-list {input.barcode} --field GT --sam {params.bam} --vcf {input.vcf} --out {params.out} {params.flag} --alpha 0 --alpha 0.5
+        demuxlet \\
+            --group-list {input.barcode} \\
+            --field GT \\
+            --sam {params.bam} \\
+            --vcf {input.vcf} \\
+            --out {params.out} {params.flag} \\
+            --alpha 0 \\
+            --alpha 0.5
         """
+
 
 rule seurat_aggregate:
     input:
@@ -310,12 +358,18 @@ rule seurat_aggregate:
         outdir = join(workpath, "seurat", "SeuratAggregate"),
         seurat = join("workflow", "scripts", "seurat_adt_aggregate.R"),
         sample_ref = lib_samples[0]
-    envmodules:
-        "R/4.1"
+    # envmodules: "R/4.1"
+    container: config["images"]["cite_base"]
     shell:
         """
-        R --no-save --args {params.outdir} {genome} {params.sample_ref} {input.rds} < {params.seurat} > {log}
+        R --no-save --args \\
+            {params.outdir} \\
+            {genome} \\
+            {params.sample_ref} \\
+            {input.rds} \\
+        < {params.seurat} > {log}
         """
+
 
 rule seurat_aggregate_rmd_report:
     input:
@@ -328,18 +382,13 @@ rule seurat_aggregate_rmd_report:
         outdir = join(workpath, "seurat", "SeuratAggregate"),
         seurat = join("workflow", "scripts", "seurat_adt_aggregate_report.Rmd"),
         html = join(workpath, "seurat", "SeuratAggregate", "SeuratAggregate_seurat.html")
-    envmodules:
-        "R/4.1"
+    # envmodules: "R/4.1"
+    container: config["images"]["cite_base"]
     shell:
         """
         R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
         """
 
-def azimuth_input(wildcards):
-    if wildcards.sample == 'SeuratAggregate':
-        return(rules.seurat_aggregate.output.rds)
-    elif wildcards.sample in lib_samples:
-        return(rules.seurat.output.rds)
 
 rule azimuth:
     input:
@@ -355,11 +404,17 @@ rule azimuth:
         script = join("workflow", "scripts", "azimuth_celltyping.R"),
         azimuth_ref = config["references"][genome]["azimuth_ref"],
         rlibs = config["r_libs"]["ext"],
-    envmodules:
-        "R/4.1"
+    # envmodules: "R/4.1"
+    container: config["images"]["cite_base"]
     shell:
         """
         # Add external packages to R .libPath
         export R_LIBS_USER='{params.rlibs}'
-        R --no-save --args {params.outdir} {input.rds} {genome} pbmc "{params.azimuth_ref}" < {params.script} > {log}
+        R --no-save --args \\
+            {params.outdir} \\
+            {input.rds} \\
+            {genome} \\
+            pbmc \\
+            "{params.azimuth_ref}" \\
+        < {params.script} > {log}
         """
