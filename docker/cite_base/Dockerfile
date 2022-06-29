@@ -18,10 +18,11 @@ LABEL maintainer=kuhnsa@nih.gov
 #    - Seurat/4.0.1  (CRAN)
 #    - ggplot2       (CRAN)
 #    - dplyr         (CRAN)
-#    - gridExtra	 (CRAN)
-#    - RColorBrewer	 (CRAN)
+#    - gridExtra     (CRAN)
+#    - kableExtra    (CRAN)
+#    - RColorBrewer  (CRAN)
 #    - future	     (CRAN)
-#    - future.apply	 (CRAN)
+#    - future.apply  (CRAN)
 #    - dsb           (CRAN)
 #    - htmlwidgets   (CRAN)
 #    - knitr         (CRAN)
@@ -35,6 +36,9 @@ LABEL maintainer=kuhnsa@nih.gov
 #    - devtools      (CRAN)
 #    - BiocManager   (CRAN)
 #    - MAST          (Bioconductor)
+#    - scran         (Bioconductor) 
+#    - scater        (Bioconductor)
+#    - SingleR       (Bioconductor)
 #    - Azimuth/0.4.5 (github satijalab/azimuth)
 #  • demuxlet        (github)
 #    - htslib/1.10   (github)
@@ -122,8 +126,9 @@ RUN Rscript -e 'install.packages(c("flextable", "future", "future.apply"), repos
 RUN Rscript -e 'install.packages(c("ggplot2", "gridExtra", "htmlwidgets"), repos="http://cran.r-project.org")'
 RUN Rscript -e 'install.packages(c("knitr", "plotly", "rmarkdown"), repos="http://cran.r-project.org")'
 RUN Rscript -e 'install.packages(c("scales", "stringr", "BiocManager"), repos="http://cran.r-project.org")'
+RUN Rscript -e 'install.packages(c("kableExtra"), repos="http://cran.r-project.org")'
 # Bioconductor packages
-RUN Rscript -e 'BiocManager::install(c("MAST", "limma"))'
+RUN Rscript -e 'BiocManager::install(c("MAST", "limma", "scran", "scater", "SingleR"))'
 # dsb needs limma installed
 RUN Rscript -e 'install.packages(c("dsb"), repos="http://cran.r-project.org")'
 # Github packages
