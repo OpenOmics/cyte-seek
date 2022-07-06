@@ -100,7 +100,7 @@ for p in input_paths:
 # threads, mem, walltimes, etc.
 # TODO: Add handler for when the
 # mode is set to local.
-if run_mode == local:
+if run_mode == 'local':
     # This functionality is NOT 
     # being used in the pipeline,
     # read in slurm config for now
