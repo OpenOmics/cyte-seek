@@ -29,6 +29,7 @@ genome = config['options']['genome']           # User selected reference genome
 features = config['options']['features']       # Features files for cellranger
 libraries = config['options']['libraries']     # Libraries files for cellranger
 num_cells = config['options']['num_cells']     # Expected number of recovered cells
+run_mode  = config['options']['mode']          # Run mode: local, slurm, or uge
 pre_mrna = str_bool(                           # Use introns for pre mRNA,
     config['options']['pre_mrna']              # default: False
 )
@@ -38,6 +39,7 @@ force_cells = str_bool(                        # Force use the expected number o
 demuxlet = str_bool(
     config['options']['demuxlet']              # Run demuxlet analysis
 )                                              # default: False
+
 if 'vcf' in config['options']:
     vcf = config['options']['vcf']
 else:
@@ -98,7 +100,12 @@ for p in input_paths:
 # threads, mem, walltimes, etc.
 # TODO: Add handler for when the
 # mode is set to local.
-with open(join('config', 'cluster.json')) as fh:
+if run_mode == local:
+    # This functionality is NOT 
+    # being used in the pipeline,
+    # read in slurm config for now
+    mode = 'slurm'
+with open(join('config', 'cluster', '{}.json'.format(run_mode))) as fh:
     cluster = json.load(fh)
 
 # Aggregated output - conditional on having more than one sample

@@ -1,0 +1,32 @@
+{
+    "__default__": {
+        "threads": "4",
+        "mem": "4G",
+        "partition": ""
+    },
+    "count": {
+        "threads": "16",
+        "mem": "6G"
+    },
+    "aggregate": {
+        "threads": "16",
+        "mem": "6G"
+    },
+    "run_demuxlet": {
+        "threads": "2",
+        "mem": "48G"
+    },
+    "seurat": {
+        "threads": "16",
+        "mem": "6G"
+    },
+    "seurat_aggregate": {
+        "threads": "16",
+        "mem": "64G",
+        "partition": "-l himem"
+    },
+    "azimuth": {
+        "threads": "16",
+        "mem": "6G"
+    }
+}

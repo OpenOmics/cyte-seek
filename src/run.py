@@ -821,7 +821,7 @@ def runner(mode, outdir, alt_cache, logger, additional_bind_paths = None,
         #   --cpus-per-task=32 --mem=96g --output "$3"/logfiles/snakemake.log --error "$3"/logfiles/snakemake.log \
         # snakemake --latency-wait 120 -s "$3"/workflow/Snakefile -d "$3" \
         #   --use-singularity --singularity-args "'-B $4'" --configfile="$3"/config.json \
-        #   --printshellcmds --cluster-config "$3"/resources/cluster.json \
+        #   --printshellcmds --cluster-config "$3"/config/cluster/slurm.json \
         #   --cluster "${CLUSTER_OPTS}" --keep-going --restart-times 3 -j 500 \
         #   --rerun-incomplete --stats "$3"/logfiles/runtime_statistics.json \
         #   --keep-remote --local-cores 30 2>&1 | tee -a "$3"/logfiles/master.log

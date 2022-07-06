@@ -186,7 +186,7 @@ function submit(){
           # --cpus-per-task=24 --mem=96g --gres=lscratch:500 
           # --output os.path.join({outdir}, 'logfiles', 'snakemake.log') --error os.path.join({outdir}, 'logfiles', 'snakemake.log') 
           # snakemake -pr --latency-wait 120 -d {outdir} --configfile=config.json 
-          # --cluster-config os.path.join({outdir}, 'config', 'cluster.json') 
+          # --cluster-config os.path.join({outdir}, 'config', 'config', 'slurm.json') 
           # --cluster {CLUSTER_OPTS} --stats os.path.join({outdir}, 'logfiles', 'runtime_statistics.json') 
           # --printshellcmds --keep-going --rerun-incomplete 
           # --keep-remote --restart-times 3 -j 500 --use-singularity 
@@ -224,10 +224,12 @@ set -euo pipefail
 snakemake --latency-wait 120 -s "$3/workflow/Snakefile" -d "$3" \\
   --use-singularity --singularity-args "'-B $4'" \\
   --use-envmodules --configfile="$3/config.json" \\
-  --printshellcmds --cluster-config "$3/config/cluster.json" \\
+  --printshellcmds --cluster-config "$3/config/cluster/slurm.json" \\
   --cluster "${CLUSTER_OPTS}" --keep-going --restart-times 3 -j 500 \\
   --rerun-incomplete --stats "$3/logfiles/runtime_statistics.json" \\
   --keep-remote --local-cores 14 2>&1
+# Create summary report
+snakemake -d "$3" --report "Snakemake_Report.html"
 EOF
     chmod +x kickoff.sh
     job_id=$(sbatch kickoff.sh | tee -a "$3"/logfiles/master.log)
