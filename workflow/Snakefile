@@ -104,7 +104,7 @@ if run_mode == local:
     # This functionality is NOT 
     # being used in the pipeline,
     # read in slurm config for now
-    mode = 'slurm'
+    run_mode = 'slurm'
 with open(join('config', 'cluster', '{}.json'.format(run_mode))) as fh:
     cluster = json.load(fh)
 
