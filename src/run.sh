@@ -28,8 +28,13 @@ entry point will internally handle. Only advanced users should directly
 invoke this script.
 Required Positional Argument:
   [1] MODE  [Type: Str] Defines the snakemake execution mode.
-                        Valid mode options include: <slurm, ...>
+                        Valid mode options include: <slurm, uge>
                           slurm: uses slurm and singularity/snakemake
+                             backend. This EXECUTOR will submit child
+                             jobs to the cluster. It is recommended 
+                             running the pipeline in this mode, as most 
+                             of the steps are computationally intensive.
+                          uge: uses uge and singularity/snakemake
                              backend. This EXECUTOR will submit child
                              jobs to the cluster. It is recommended 
                              running the pipeline in this mode, as most 
@@ -69,8 +74,9 @@ OPTIONS:
                                 [Default: $(dirname  "$0")/.singularity/]
   -h, --help     [Type: Bool]  Displays usage and help information.
 Example:
-  $ runner slurm -h
-  $ runner slurm -j mjobid -b "/data/$USER/,/lscratch"
+  $ run.sh -h
+  $ run.sh slurm -j mjobid -b "/data/$USER/,/lscratch" -o $PWD
+  $ run.sh uge -j mjobid -b "/data/$USER/,/lscratch" -o $PWD
 Version:
   1.0.0
 EOF
@@ -180,36 +186,26 @@ function submit(){
   case "$executor" in
     slurm)
           # Create directory for logfiles
-          mkdir -p "$3"/logfiles/slurmfiles/
-          # Submit the master job to the cluster
-          # sbatch --parsable -J {jobname} --time=5-00:00:00 --mail-type=BEGIN,END,FAIL 
-          # --cpus-per-task=24 --mem=96g --gres=lscratch:500 
-          # --output os.path.join({outdir}, 'logfiles', 'snakemake.log') --error os.path.join({outdir}, 'logfiles', 'snakemake.log') 
-          # snakemake -pr --latency-wait 120 -d {outdir} --configfile=config.json 
-          # --cluster-config os.path.join({outdir}, 'config', 'config', 'slurm.json') 
-          # --cluster {CLUSTER_OPTS} --stats os.path.join({outdir}, 'logfiles', 'runtime_statistics.json') 
-          # --printshellcmds --keep-going --rerun-incomplete 
-          # --keep-remote --restart-times 3 -j 500 --use-singularity 
-          # --singularity-args -B {}.format({bindpaths}) --local-cores 24
+          mkdir -p "$3/logfiles/slurmfiles/"
           SLURM_DIR="$3/logfiles/slurmfiles"
           CLUSTER_OPTS="sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} --job-name={params.rname} -e $SLURM_DIR/slurm-%j_{params.rname}.out -o $SLURM_DIR/slurm-%j_{params.rname}.out"
-          # Check if NOT running on Biowulf
-          # Assumes other clusters do NOT 
-          # have GRES for local node disk,
-          # long term it might be worth 
-          # adding a new option to allow 
-          # a user to decide whether to 
-          # use GRES at job submission,
-          # trying to infer this because
-          # most users will not even know
-          # what GRES is and how or why
-          # it should be used and by default
-          # SLURM is not configured to use 
-          # GRES, remove prefix single quote
           if [[ ${6#\'} != /lscratch* ]]; then
+            # We are NOT running on Biowulf,
+            # Assumes other clusters do NOT 
+            # have GRES for local node disk,
+            # long term it might be worth 
+            # adding a new option to allow 
+            # a user to decide whether to 
+            # use GRES at job submission,
+            # trying to infer this because
+            # most users will not even know
+            # what GRES is and how or why
+            # it should be used and by default
+            # SLURM is not configured to use 
+            # GRES, remove prefix single quote
             CLUSTER_OPTS="sbatch --cpus-per-task {cluster.threads} -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} --job-name={params.rname} -e $SLURM_DIR/slurm-%j_{params.rname}.out -o $SLURM_DIR/slurm-%j_{params.rname}.out"
           fi
-          # Create sbacth script to build index
+          # Create sbatch script for master job
     cat << EOF > kickoff.sh
 #!/usr/bin/env bash
 #SBATCH --cpus-per-task=16 
@@ -231,11 +227,38 @@ snakemake --latency-wait 120 -s "$3/workflow/Snakefile" -d "$3" \\
 # Create summary report
 snakemake -d "$3" --report "Snakemake_Report.html"
 EOF
+          chmod +x kickoff.sh
+          job_id=$(sbatch kickoff.sh | tee -a "$3"/logfiles/master.log)
+        ;;
+    uge)
+          # Create directory for logfiles
+          mkdir -p "$3/logfiles/ugefiles/"
+          UGE_DIR="$3/logfiles/ugefiles"
+          CLUSTER_OPTS="qsub -pe threaded {cluster.threads} {cluster.partition} -l h_vmem={cluster.mem} -N {params.rname} -o '$UGE_DIR/uge-$JOB_ID_{params.rname}.out' -j y"
+          # Create qsub script for master job
+    cat << EOF > kickoff.sh
+#!/usr/bin/env bash
+#$ -pe threaded 16
+#$ -l h_vmem=6G
+#$ -N "$2"
+#$ -o "$3/logfiles/snakemake.log"
+#$ -j y
+set -euo pipefail
+snakemake --latency-wait 120 -s "$3/workflow/Snakefile" -d "$3" \\
+  --use-singularity --singularity-args "'-B $4'" \\
+  --use-envmodules --configfile="$3/config.json" \\
+  --printshellcmds --cluster-config "$3/config/cluster/uge.json" \\
+  --cluster "${CLUSTER_OPTS}" --keep-going --restart-times 3 -j 500 \\
+  --rerun-incomplete --stats "$3/logfiles/runtime_statistics.json" \\
+  --keep-remote --local-cores 14 2>&1
+# Create summary report
+snakemake -d "$3" --report "Snakemake_Report.html"
+EOF
     chmod +x kickoff.sh
-    job_id=$(sbatch kickoff.sh | tee -a "$3"/logfiles/master.log)
+    job_id=$(qsub -terse kickoff.sh | tee -a "$3"/logfiles/master.log)
         ;;
       *)  echo "${executor} is not available." && \
-          fatal "Failed to provide valid execution backend: ${executor}. Please use slurm."
+          fatal "Failed to provide valid execution backend: ${executor}. Please use slurm or uge."
         ;;
     esac
 
@@ -257,9 +280,10 @@ function main(){
   # Positional Argument for Snakemake Executor
   case $1 in
     slurm) Arguments["e"]="$1";;
+    uge) Arguments["e"]="$1";;
     -h    | --help | help) usage && exit 0;;
-    -*    | --*) err "Error: Failed to provide required positional argument: <slurm>."; usage && exit 1;;
-    *) err "Error: Failed to provide valid positional argument. '${1}' is not supported. Valid option(s) are slurm"; usage && exit 1;;
+    -*    | --*) err "Error: Failed to provide required positional argument: <slurm,uge>."; usage && exit 1;;
+    *) err "Error: Failed to provide valid positional argument. '${1}' is not supported. Valid option(s) are slurm or uge"; usage && exit 1;;
   esac
 
   # Parses remaining user provided command-line arguments

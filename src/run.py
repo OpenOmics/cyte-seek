@@ -732,11 +732,12 @@ def dryrun(outdir, config='config.json', snakefile=os.path.join('workflow', 'Sna
 
 
 def runner(mode, outdir, alt_cache, logger, additional_bind_paths = None, 
-    threads=2,  jobname='pl:master', submission_script='runner',
+    threads=2,  jobname='pl:master', submission_script='run.sh',
     tmp_dir = '/lscratch/$SLURM_JOBID/'):
-    """Runs the pipeline via selected executor: local or slurm.
+    """Runs the pipeline via selected executor: local, slurm, uge.
     If 'local' is selected, the pipeline is executed locally on a compute node/instance.
     If 'slurm' is selected, jobs will be submited to the cluster using SLURM job scheduler.
+    If 'uge' is selected, jobs will be submited to the cluster using UGE job scheduler.
     Support for additional job schedulers (i.e. PBS, SGE, LSF) may be added in the future.
     @param outdir <str>:
         Pipeline output PATH
@@ -744,6 +745,7 @@ def runner(mode, outdir, alt_cache, logger, additional_bind_paths = None,
         Execution method or mode:
             local runs serially a compute instance without submitting to the cluster.
             slurm will submit jobs to the cluster using the SLURM job scheduler.
+            uge will submit jobs to the cluster using the UGE job scheduler
     @param additional_bind_paths <str>:
         Additional paths to bind to container filesystem (i.e. input file paths)
     @param alt_cache <str>:
@@ -752,8 +754,10 @@ def runner(mode, outdir, alt_cache, logger, additional_bind_paths = None,
         An open file handle for writing
     @param threads <str>:
         Number of threads to use for local execution method
-    @param masterjob <str>:
+    @param jobname <str>:
         Name of the master job
+    @param submission_script <str>:
+        Path to pipeline submission script, see src/run.sh
     @return masterjob <subprocess.Popen() object>:
     """
     # Add additional singularity bind PATHs
@@ -797,9 +801,6 @@ def runner(mode, outdir, alt_cache, logger, additional_bind_paths = None,
     # without submitting jobs to a scheduler
     if mode == 'local':
         # Run pipeline's main process
-        # Look into later: it maybe worth 
-        # replacing Popen subprocess with a direct
-        # snakemake API call: https://snakemake.readthedocs.io/en/stable/api_reference/snakemake.html
         masterjob = subprocess.Popen([
                 'snakemake', '-pr', '--rerun-incomplete',
                 '--use-singularity',
@@ -808,23 +809,9 @@ def runner(mode, outdir, alt_cache, logger, additional_bind_paths = None,
                 '--configfile=config.json'
             ], cwd = outdir, stderr=subprocess.STDOUT, stdout=logger, env=my_env)
 
-    # Submitting jobs to cluster via SLURM's job scheduler
-    elif mode == 'slurm':
+    # Submitting jobs to cluster via a job scheduler
+    elif mode in ['slurm', 'uge']:
         # Run pipeline's main process
-        # Look into later: it maybe worth 
-        # replacing Popen subprocess with a direct
-        # snakemake API call: https://snakemake.readthedocs.io/en/stable/api_reference/snakemake.html
-        # CLUSTER_OPTS="'sbatch --gres {cluster.gres} --cpus-per-task {cluster.threads} -p {cluster.partition} \
-        #   -t {cluster.time} --mem {cluster.mem} --job-name={params.rname} -e $SLURMDIR/slurm-%j_{params.rname}.out \
-        #   -o $SLURMDIR/slurm-%j_{params.rname}.out'"
-        # sbatch --parsable -J "$2" --gres=lscratch:500 --time=5-00:00:00 --mail-type=BEGIN,END,FAIL \
-        #   --cpus-per-task=32 --mem=96g --output "$3"/logfiles/snakemake.log --error "$3"/logfiles/snakemake.log \
-        # snakemake --latency-wait 120 -s "$3"/workflow/Snakefile -d "$3" \
-        #   --use-singularity --singularity-args "'-B $4'" --configfile="$3"/config.json \
-        #   --printshellcmds --cluster-config "$3"/config/cluster/slurm.json \
-        #   --cluster "${CLUSTER_OPTS}" --keep-going --restart-times 3 -j 500 \
-        #   --rerun-incomplete --stats "$3"/logfiles/runtime_statistics.json \
-        #   --keep-remote --local-cores 30 2>&1 | tee -a "$3"/logfiles/master.log
         masterjob = subprocess.Popen([
                 str(os.path.join(outdir, 'resources', str(submission_script))), mode,
                 '-j', jobname, '-b', str(bindpaths),

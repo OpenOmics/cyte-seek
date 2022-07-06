@@ -172,7 +172,7 @@ def cite(sub_args):
         else:
             fatal('{} pipeline failed. Please see {} for more information.'.format(_name,
                 os.path.join(sub_args.output, 'logfiles', 'snakemake.log')))
-    elif sub_args.mode == 'slurm':
+    elif sub_args.mode in ['slurm', 'uge']:
         jobid = open(os.path.join(sub_args.output, 'logfiles', 'mjobid.log')).read().strip()
         if not sub_args.silent:
             if int(mjob.returncode) == 0:
@@ -362,22 +362,20 @@ def parsed_arguments(name, description):
 
 
         {3}{4}Orchestration options:{5}
-          --mode {{slurm,local}}
+          --mode {{slurm,uge,local}}
                                 Method of execution. Defines the mode of execution.
-                                Vaild options for this mode include: slurm or local.
-                                Additional modes of exection are coming soon, default:
-                                slurm.
-                                Here is a brief description of each mode:
-                                   local: uses local method of execution. local runs
+                                Please select from one of the following options below: 
+                                  • slurm: uses SLURM execution backend. This method
+                                will submit jobs to a cluster using sbatch. Please set 
+                                the mode to slurm when running the pipeline on Biowulf. 
+                                  • uge: uses UGE execution backend. This method will
+                                submit jobs to a cluster using qsub. Please set the 
+                                mode to uge when running the pipeline on LOCUS.    
+                                  • local: uses local method of execution. local runs
                                 will run serially on compute instance. This is useful
                                 for testing, debugging, or when a users does not have
-                                access to a  high  performance  computing environment.
-                                If this option is not provided, it will default to a
-                                slurm mode of execution.
-                                   slurm: uses slurm execution backend. This method
-                                will submit jobs to a  cluster  using sbatch. It is
-                                recommended running the pipeline in this mode as it
-                                will be significantly faster.
+                                access to a  high  performance  computing environment,
+                                default: slurm.
                                   Example: --mode slurm
           --job-name JOB_NAME
                                 Overrides the name of the pipeline's master job. When
@@ -600,7 +598,7 @@ def parsed_arguments(name, description):
         type = str,
         required = False,
         default = "slurm",
-        choices = ['slurm', 'local'],
+        choices = ['slurm', 'uge', 'local'],
         help = argparse.SUPPRESS
     )
 
