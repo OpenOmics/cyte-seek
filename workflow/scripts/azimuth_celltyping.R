@@ -45,8 +45,11 @@ for (group in groups) {
   write.table(table(seur[[group]]), paste0("CellTypeCount_", level, ".csv"), quote=FALSE, row.names=FALSE, col.names=FALSE, sep=',')
 
   if (dim(unique(seur[['orig.ident']]))[[1]] > 1) {
-    png(paste0('UMAP_RNA_CellType_', level, '_Split.png'), width=width+400*dim(unique(seur[['orig.ident']]))[[1]], height=1600, res = 300)
-    print(DimPlot(seur, group.by = group, split.by = 'orig.ident', label = TRUE, label.size = 3, repel = TRUE, raster = TRUE) + ggtitle("PBMC"))
+    cols = ceiling(sqrt(length(unique(seur$orig.ident))))
+    rows = length(unique(seur$orig.ident)) / cols
+
+    png(paste0('UMAP_RNA_CellType_', level, '_Split.png'), width=width+1300*cols, height=(1300*rows)+300, res = 300)
+    print(DimPlot(seur, group.by = group, split.by = 'orig.ident', ncol= cols, label = TRUE, label.size = 3, repel = TRUE, raster = TRUE) + ggtitle("PBMC"))
     dev.off()
   }
 }
