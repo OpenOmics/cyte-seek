@@ -412,16 +412,17 @@ def parsed_arguments(name, description):
           --tmp-dir TMP_DIR
                                 Path on the file system for writing temporary output
                                 files. By default, the temporary directory is set to
-                                '/lscratch/$SLURM_JOBID' for backwards compatibility
-                                with the NIH's Biowulf cluster; however, if you are
-                                running the pipeline on another cluster, this option
-                                will need to be specified. Ideally, this path should
-                                point to a dedicated location on the filesystem for
-                                writing tmp files. On many systems, this location is
-                                set to somewhere in /scratch. If you need to inject a
-                                variable into this string that should NOT be expanded,
-                                please quote this options value in single quotes.
-                                  Example: --tmp-dir '/scratch/cluster_scratch/$USER/'
+                                '/tmp'; however this option can be set to an optimized 
+                                location on the filesystem for temporary files. Ideally, 
+                                this path should point to a dedicated location on the 
+                                filesystem for writing tmp files. On many systems, this 
+                                location is set to somewhere in /scratch. If you need to 
+                                inject a variable into this string that should NOT be 
+                                expanded, please quote this option's value in single 
+                                quotes. On Biowulf, local node storage can be accessed
+                                by setting this option to '/lscratch/$SLURM_JOBID', 
+                                default: '/tmp/$USER/'.
+                                  Example: --tmp-dir '/hpcdata/scratch/$USER'
           --threads THREADS
                                 Max number of threads for local processes. It is
                                 recommended setting this vaule to the maximum number of
@@ -607,7 +608,7 @@ def parsed_arguments(name, description):
         '--job-name',
         type = str,
         required = False,
-        default = 'pl:{}'.format(name),
+        default = '{}'.format(name),
         help = argparse.SUPPRESS
     )
 
@@ -655,7 +656,7 @@ def parsed_arguments(name, description):
         '--tmp-dir',
         type = str,
         required = False,
-        default = '/lscratch/$SLURM_JOBID/',
+        default = '/tmp/$USER/',
         help = argparse.SUPPRESS
     )
 
