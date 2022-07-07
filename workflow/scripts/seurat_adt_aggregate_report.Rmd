@@ -1,14 +1,15 @@
 ---
 title: "Sample `r params$sample` PreProcessing"
-output: 
+output:
   html_document:
     toc: true
-    toc_float: 
+    toc_float:
       collapsed: false
 date: "`r Sys.Date()`"
-params: 
+params:
   workdir: seurat
   sample: sample_name
+  celltype: NA
 ---
 
 ```{r setup, include=FALSE}
@@ -27,6 +28,7 @@ library(kableExtra)
 ```{r Input, include=FALSE}
 workdir <- params$workdir
 sample <- params$sample
+celltype <- params$celltype
 hashtag <- FALSE
 demux <- FALSE
 ```
@@ -43,7 +45,7 @@ knitr::opts_knit$set(root.dir = workdir)
 
 ## UMAP Plot and Clusters {.tabset}
 
-### RNA-Based 
+### GEX-Based
 ```{r}
 include_graphics(file.path(workdir, 'UMAP_RNA.png'))
 
@@ -57,22 +59,22 @@ include_graphics(file.path(workdir, 'UMAP_ADT.png'))
 include_graphics(file.path(workdir, 'UMAP_ADT_Split_Raster.png'))
 ```
 
-### Weighted Nearest Neighbor
-```{r}
-include_graphics(file.path(workdir, 'UMAP_MultiModal_WNN.png'))
+<!-- ### Weighted Nearest Neighbor -->
+<!-- ```{r} -->
+<!-- include_graphics(file.path(workdir, 'UMAP_MultiModal_WNN.png')) -->
 
-include_graphics(file.path(workdir, 'UMAP_MultiModal_WNN_Split_Raster.png'))
-```
+<!-- include_graphics(file.path(workdir, 'UMAP_MultiModal_WNN_Split_Raster.png')) -->
+<!-- ``` -->
 
-#### Weighted Nearest Neighbor Cell Modality Weights per Cluster
-```{r}
-include_graphics(file.path(workdir, 'MultiModal_WNN_Weights.png'))
-```
+<!-- #### Weighted Nearest Neighbor Cell Modality Weights per Cluster -->
+<!-- ```{r} -->
+<!-- include_graphics(file.path(workdir, 'MultiModal_WNN_Weights.png')) -->
+<!-- ``` -->
 
-### Weighted Nearest Neighbor Clusters with RNA and ADT UMAP Coordinates
-```{r}
-include_graphics(file.path(workdir, 'UMAP_MultiModal_RNA_ADT.png'))
-```
+<!-- ### Weighted Nearest Neighbor Clusters with RNA and ADT UMAP Coordinates -->
+<!-- ```{r} -->
+<!-- include_graphics(file.path(workdir, 'UMAP_MultiModal_RNA_ADT.png')) -->
+<!-- ``` -->
 
 ```{r Demuxlet Counts, results='asis', eval=file.exists('UMAP_RNA_Demux_Split_Raster.png')}
 cat("## Demuxlet Results")
@@ -84,7 +86,7 @@ include_graphics(file.path(workdir, 'UMAP_RNA_Demux_Split_Raster.png'))
 ```
 
 
-## Cluster-based Differentially Expressed Genes {.tabset}
+## Gene Expression Cluster-based Differentially Expressed Genes {.tabset}
 ```{r, results='asis'}
 filenames <- Sys.glob(file.path(workdir, 'DEG/*txt'))
 clusters <- list()
@@ -107,3 +109,54 @@ knitr::knit_print(DT::datatable(clusters[[length(clusters)]], height='100%', wid
 
 ```
 
+```{r Cell Type Results, results='asis', out.height="80%", eval=celltype != 'NA'}
+cat("## Gene Expression Based Cell Type Prediction {.tabset}")
+cat("\n\n")
+
+cat("### Level 1")
+cat("\n", '<br>', "\n\n")
+
+calls <- read.table(list.files(file.path(celltype), pattern="l1.csv", full.names=TRUE), sep=',', header=FALSE)
+colnames(calls) <- c("Cell Type", "Cell Count")
+calls %>% flextable() %>% autofit()
+
+myimages<-list.files(file.path(celltype), pattern = "l1.png", full.names = TRUE)
+#include_graphics(myimages[[2]])
+#include_graphics(myimages[[1]])
+include_graphics(myimages)
+
+if(length(list.files(file.path(celltype), pattern = "l1_Split.png", full.names = TRUE)) > 0) {
+  include_graphics(list.files(file.path(celltype), pattern = "l1_Split.png", full.names = TRUE)[[1]])
+}
+
+cat ("\n\n")
+cat("### Level 2")
+cat("\n\n")
+calls <- read.table(list.files(file.path(celltype), pattern="l2.csv", full.names=TRUE), sep=',', header=FALSE)
+colnames(calls) <- c("Cell Type", "Cell Count")
+calls %>% flextable()# %>% autofit()
+
+myimages<-list.files(file.path(celltype), pattern = "l2.png", full.names = TRUE)
+include_graphics(myimages)
+
+if(length(list.files(file.path(celltype), pattern = "l2_Split.png", full.names = TRUE)) > 0) {
+  include_graphics(list.files(file.path(celltype), pattern = "l2_Split.png", full.names = TRUE)[[1]])
+}
+
+cat ("\n\n")
+cat("### Level 3")
+cat("\n\n")
+calls <- read.table(list.files(file.path(celltype), pattern="l3.csv", full.names=TRUE), sep=',', header=FALSE)
+colnames(calls) <- c("Cell Type", "Cell Count")
+calls %>% flextable() %>% autofit()
+
+myimages<-list.files(file.path(celltype), pattern = "l3.png", full.names = TRUE)
+include_graphics(myimages)
+
+if(length(list.files(file.path(celltype), pattern = "l3_Split.png", full.names = TRUE)) > 0) {
+  include_graphics(list.files(file.path(celltype), pattern = "l3_Split.png", full.names = TRUE)[[1]])
+}
+
+```
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
