@@ -7,7 +7,7 @@ library(RColorBrewer)
 
 library(future)
 library(future.apply)
-plan("multicore", workers = 8)
+plan("multisession", workers = 8)
 options(future.globals.maxSize = 30000 * 1024^2)
 
 args<-commandArgs(TRUE);
@@ -57,6 +57,10 @@ future.seed=TRUE
 #combinedObj.integrated = IntegrateData(anchorset = reference.anchors, new.assay.name = "integratedRNA", dims = 1:30, normalization.method = "SCT")
 combinedObj.integrated = IntegrateData(anchorset = reference.anchors, new.assay.name = "integratedRNA", dims = 1:50,  normalization.method = "LogNormalize")
 
+for (i in grep('snn_res', colnames(combinedObj.integrated@meta.data), value=TRUE)) {
+    combinedObj.integrated[[i]] <- NULL
+}
+
 combinedObj.integrated = ScaleData(combinedObj.integrated, verbose = FALSE)
 combinedObj.integrated = RunPCA(combinedObj.integrated, verbose = FALSE)
 combinedObj.integrated = RunTSNE(combinedObj.integrated, reduction.name = 'rna.tsne', reduction.key = 'rnaTSNE_', dims = 1:30)
@@ -101,7 +105,8 @@ if ('hash.ID' %in% colnames(combinedObj.integrated@meta.data)) {
   for (i in seq(1,length(rownames(combinedObj.integrated[["HTO"]])), by=25)) {
     print(RidgePlot(combinedObj.integrated, sort(rownames(combinedObj.integrated[['HTO']]))[i:min(i+24,length(rownames(combinedObj.integrated[['HTO']])))], assay="HTO", ncol=min(5, ceiling(sqrt(length(rownames(combinedObj.integrated[['HTO']]))-(i-1)))), group.by='hash.ID'))
   }
-  
+  dev.off()
+ 
   png("UMAP_RNA_HTO.png", width=1800, height=1600, res = 300)
   DimPlot(combinedObj.integrated, reduction='rna.umap', group.by='hash.ID', label = TRUE) + ggtitle("RNA")
   dev.off()
@@ -138,54 +143,60 @@ dev.off()
 future.seed = NULL
 
 DefaultAssay(object = combinedObj.integrated) <- "integratedRNA"
+
+multimode.integrated <- combinedObj.integrated
+
 # Identify multimodal neighbors. These will be stored in the neighbors slot, and can be accessed using bm[['weighted.nn']]
 # The WNN graph can be accessed at bm[["wknn"]], and the SNN graph used for clustering at bm[["wsnn"]]
 # Cell-specific modality weights can be accessed at bm$RNA.weight
 
-multimode.integrated <- FindMultiModalNeighbors(
-  combinedObj.integrated, reduction.list = list("pca", "apca"), 
-  dims.list = list(1:30, 1:30), modality.weight.name = c("intRNA.weight", "intADT.weight"))
+### Currently commenting out because it is slow and not always useful
 
-multimode.integrated <- RunUMAP(multimode.integrated, nn.name = "weighted.nn", reduction.name = "wnn.umap", reduction.key = "wnnUMAP_")
-
-multimode.integrated <- FindClusters(multimode.integrated, graph.name = "wsnn", verbose = FALSE)
-
-
-
-p1 <- DimPlot(multimode.integrated, reduction = 'wnn.umap', label = TRUE, repel = TRUE, label.size = 2.5) #+ NoLegend()
-
-png("UMAP_MultiModal_WNN.png", width=1800, height=1600, res = 300)
-p1 + ggtitle("Multi-Modal Weighted Graph")
-dev.off()
-
-cols = ceiling(sqrt(length(unique(multimode.integrated$orig.ident))))
-rows = length(unique(multimode.integrated$orig.ident)) / cols
-png("UMAP_MultiModal_WNN_Split_Raster.png", width=(1300*cols)+300, height=(1200*rows)+300, res = 300)
-print(DimPlot(multimode.integrated, reduction='wnn.umap', split.by='orig.ident', ncol= cols, label = TRUE, raster=TRUE) + ggtitle("Multi-Modal WNN"))
-dev.off()
-
-
-## ----Multi-Modal Modality Weights, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.width=10, fig.height=7----
-png("MultiModal_WNN_Weights.png", width=3600, height=2400, res = 300)
-(VlnPlot(multimode.integrated, features = "SCT.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend()) / (VlnPlot(multimode.integrated, features = "ADT.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend())
-dev.off()
-
-
-p3 <- DimPlot(multimode.integrated, reduction = 'rna.umap', label = TRUE, 
-              repel = TRUE, label.size = 2.5) + NoLegend() + ggtitle("RNA")
-p4 <- DimPlot(multimode.integrated, reduction = 'adt.umap', label = TRUE, 
-              repel = TRUE, label.size = 2.5)  + ggtitle("ADT") #+ NoLegend()
-png("UMAP_MultiModal_RNA_ADT.png", width=3600, height=1600, res = 300)
-p3 + p4
-dev.off()
+# multimode.integrated <- FindMultiModalNeighbors(
+#   combinedObj.integrated, reduction.list = list("pca", "apca"), 
+#   dims.list = list(1:30, 1:30), modality.weight.name = c("intRNA.weight", "intADT.weight"))
+# 
+# multimode.integrated <- RunUMAP(multimode.integrated, nn.name = "weighted.nn", reduction.name = "wnn.umap", reduction.key = "wnnUMAP_")
+# 
+# multimode.integrated <- FindClusters(multimode.integrated, graph.name = "wsnn", verbose = FALSE)
+# 
+# 
+# 
+# p1 <- DimPlot(multimode.integrated, reduction = 'wnn.umap', label = TRUE, repel = TRUE, label.size = 2.5) #+ NoLegend()
+# 
+# png("UMAP_MultiModal_WNN.png", width=1800, height=1600, res = 300)
+# p1 + ggtitle("Multi-Modal Weighted Graph")
+# dev.off()
+# 
+# cols = ceiling(sqrt(length(unique(multimode.integrated$orig.ident))))
+# rows = length(unique(multimode.integrated$orig.ident)) / cols
+# png("UMAP_MultiModal_WNN_Split_Raster.png", width=(1300*cols)+300, height=(1200*rows)+300, res = 300)
+# print(DimPlot(multimode.integrated, reduction='wnn.umap', split.by='orig.ident', ncol= cols, label = TRUE, raster=TRUE) + ggtitle("Multi-Modal WNN"))
+# dev.off()
+# 
+# 
+# ## ----Multi-Modal Modality Weights, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.width=10, fig.height=7----
+# png("MultiModal_WNN_Weights.png", width=3600, height=2400, res = 300)
+# (VlnPlot(multimode.integrated, features = "SCT.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend()) / (VlnPlot(multimode.integrated, features = "ADT.weight", group.by = 'wsnn_res.0.8', pt.size = 0.1) + NoLegend())
+# dev.off()
+# 
+# 
+# p3 <- DimPlot(multimode.integrated, reduction = 'rna.umap', label = TRUE, 
+#               repel = TRUE, label.size = 2.5) + NoLegend() + ggtitle("RNA")
+# p4 <- DimPlot(multimode.integrated, reduction = 'adt.umap', label = TRUE, 
+#               repel = TRUE, label.size = 2.5)  + ggtitle("ADT") #+ NoLegend()
+# png("UMAP_MultiModal_RNA_ADT.png", width=3600, height=1600, res = 300)
+# p3 + p4
+# dev.off()
 
 saveRDS(multimode.integrated, "multimode.integrated.rds")
 
 
 ## ----Prepare for Heatmap, include=FALSE----------------------------------------------
 require(scales)
-identities <- levels(multimode.integrated$wsnn_res.0.8)
+identities <- levels(multimode.integrated$integratedRNA_snn_res.0.8)
 DefaultAssay(multimode.integrated) <- 'integratedRNA'
+Idents(multimode.integrated) <- multimode.integrated$integratedRNA_snn_res.0.8
 
 suppressWarnings(dir.create('DEG'))
 
