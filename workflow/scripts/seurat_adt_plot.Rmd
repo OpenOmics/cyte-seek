@@ -1,12 +1,12 @@
 ---
 title: "Sample `r params$sample` PreProcessing"
-output: 
+output:
   html_document:
     toc: true
-    toc_float: 
+    toc_float:
       collapsed: false
 date: "`r Sys.Date()`"
-params: 
+params:
   workdir: seurat
   sample: sample_name
   celltype: NA
@@ -60,14 +60,14 @@ for (i in sort(rownames(genes))){
 
 ### Pre-Filter QC Plots {.tabset}
 
-#### Per Cell Gene Scatter Plots 
+#### Per Cell Gene Scatter Plots
 
 ```{r, out.height="80%"}
 myimages<-list.files("images/", pattern = ".png", full.names = TRUE)
 include_graphics(file.path(workdir, 'PreFilter_Gene_Plot.png'))
 ```
 
-#### RNA Violin Plots
+#### GEX Violin Plots
 ```{r, out.height="80%"}
 myimages<-list.files("images/", pattern = ".png", full.names = TRUE)
 include_graphics(file.path(workdir, 'PreFilter_VlnPlot_RNA.png'))
@@ -94,9 +94,9 @@ thresh <- read.csv('cell_filter_info.csv')
 ```
 Thresholds were calculated and used to filter out potential low quality cells and multiplets. The following are the thresholds that were set for each set of statistics.
 
-RNA Gene Count Thresholds: (`r sprintf("%.2f", exp(thresh$nFeature_RNA_low)-1)`, `r sprintf("%.2f",  exp(thresh$nFeature_RNA_high)-1)`)
+GEX Gene Count Thresholds: (`r sprintf("%.2f", exp(thresh$nFeature_RNA_low)-1)`, `r sprintf("%.2f",  exp(thresh$nFeature_RNA_high)-1)`)
 
-RNA Read Count Thresholds: (`r sprintf("%.2f", exp(thresh$nCount_RNA_low)-1)`, `r sprintf("%.2f", exp(thresh$nCount_RNA_high)-1)`)
+GEX Read Count Thresholds: (`r sprintf("%.2f", exp(thresh$nCount_RNA_low)-1)`, `r sprintf("%.2f", exp(thresh$nCount_RNA_high)-1)`)
 
 Mitochondrial Percentage Upper Threshold: `r sprintf("%.2f", exp(thresh$mt_high)-1)`
 
@@ -110,13 +110,13 @@ Total cells filtered: `r thresh$numCellsRemove`
 
 ### Post-Filter QC Plots {.tabset}
 
-#### Per Cell Gene Scatter Plots 
+#### Per Cell Gene Scatter Plots
 
 ```{r, out.height="80%"}
 include_graphics(file.path(workdir, 'PostFilter_Gene_Plot.png'))
 ```
 
-#### RNA Violin Plots
+#### GEX Violin Plots
 ```{r, out.height="80%"}
 include_graphics(file.path(workdir, 'PostFilter_VlnPlot_RNA.png'))
 ```
@@ -172,7 +172,7 @@ include_graphics(file.path(workdir, 'HTO_Ridge_Plot.png'))
 
 ## UMAP Plot and Clusters {.tabset}
 
-### RNA-Based 
+### GEX-Based
 ```{r}
 include_graphics(file.path(workdir, 'UMAP_RNA.png'))
 if (demux) {
@@ -200,7 +200,7 @@ include_graphics(file.path(workdir, 'MultiModal_WNN_Weights.png'))
 include_graphics(file.path(workdir, 'UMAP_MultiModal_RNA_ADT.png'))
 ```
 
-## ADT Expression 
+## ADT Expression
 Ridge plots have been generated for each of the ADT included in the data. The following is the first of these sets of images.
 
 ```{r}
@@ -208,7 +208,7 @@ myimages<-list.files(file.path(workdir, "ADT/"), pattern = ".png", full.names = 
 include_graphics(file.path(workdir, 'ADT/ADT_Ridgeplots_1.png'))
 ```
 
-## Cluster-based Differentially Expressed Genes {.tabset}
+## WNN Cluster-based Differentially Expressed Genes {.tabset}
 ```{r, results='asis'}
 filenames <- Sys.glob(file.path(workdir, 'DEG/*txt'))
 clusters <- list()
@@ -241,7 +241,7 @@ include_graphics(file.path(workdir, 'DEG/DEG_Top5_Cluster_Heatmap.png'))
 ```
 
 ```{r Cell Type Results, results='asis', out.height="80%", eval=celltype != 'NA'}
-cat("## Cell Type Prediction {.tabset}")
+cat("## Gene Expression Based Cell Type Prediction {.tabset}")
 cat("\n\n")
 
 cat("### Level 1")
@@ -252,8 +252,9 @@ colnames(calls) <- c("Cell Type", "Cell Count")
 calls %>% flextable() %>% autofit()
 
 myimages<-list.files(file.path(celltype), pattern = "l1.png", full.names = TRUE)
-include_graphics(myimages[[2]])
-include_graphics(myimages[[1]])
+#include_graphics(myimages[[2]])
+#include_graphics(myimages[[1]])
+include_graphics(myimages)
 
 cat ("\n\n")
 cat("### Level 2")
