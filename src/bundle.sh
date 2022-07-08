@@ -33,8 +33,8 @@ function main() {
 	archive_dir=$(abspath "$1")
 	archive=$(basename "${archive_dir%/}")
 	parent_dir=$(dirname "$archive_dir")
-	output_dir=$(abspath "$2")
-	output_dir=$(dirname "$output_dir")
+	output_dir=$(dirname "$2")
+	output_dir=$(abspath "$output_dir")
 	mkdir -p "$output_dir"
 	cd "$parent_dir"
 
