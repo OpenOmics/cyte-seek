@@ -1,6 +1,5 @@
-#!/bin/bash
-
-set -euo pipefail 
+#!/usr/bin/env bash
+set -euo pipefail
 
 usage="Usage: $0 <path_to_resource_bundle_directory> <output_archive.tar.gz>"
 
@@ -9,7 +8,7 @@ function fatal() { cat <<< "$@" 1>&2; err "$usage"; exit 1; }
 function abspath() { readlink -f "$1"; }
 function bundle() { tar -hczvf "$1" "$2"; }
 
- 
+
 function check() {
 	die=false
 	if [ -z "${1:-}" ]; then die=true; err "Error: Failed to provide directory to archive."; fi
