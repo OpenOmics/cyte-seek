@@ -298,14 +298,14 @@ function main(){
   Arguments[c]="${Arguments[c]%/}" # clean outdir path (remove trailing '/')
 
   # Print pipeline metadata prior to running
-  echo -e "chicyte\t$(date)"
+  echo -e "cyte-seek\t$(date)"
   echo -e "Running pipeline with the following parameters:"
   for key in "${!Arguments[@]}"; do echo -e "\t${key}\t${Arguments["$key"]}"; done
 
   # Run pipeline and submit jobs to cluster using the defined executor
   mkdir -p "${Arguments[o]}/logfiles/"
   job_id=$(submit "${Arguments[e]}" "${Arguments[j]}" "${Arguments[o]}" "${Arguments[b]}" "${Arguments[c]}" "${Arguments[t]}")
-  echo -e "chicyte pipeline submitted to cluster.\nMaster Job ID: $job_id"
+  echo -e "cyte-seek pipeline submitted to cluster.\nMaster Job ID: $job_id"
   echo "${job_id}" > "${Arguments[o]}/logfiles/mjobid.log"
 
 }

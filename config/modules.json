@@ -7,7 +7,7 @@
         "vcftools": "vcftools/0.1.16"
     },
     "r_libs": {
-        "ext": "/data/OpenOmics/references/chicyte/R/4.1/library"
+        "ext": "/data/OpenOmics/references/cyte-seek/R/4.1/library"
     },
     "conda": {
         
