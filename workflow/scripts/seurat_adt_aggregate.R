@@ -195,7 +195,7 @@ saveRDS(multimode.integrated, "multimode.integrated.rds")
 ## ----Prepare for Heatmap, include=FALSE----------------------------------------------
 require(scales)
 identities <- levels(multimode.integrated$integratedRNA_snn_res.0.8)
-DefaultAssay(multimode.integrated) <- 'integratedRNA'
+DefaultAssay(multimode.integrated) <- 'RNA'
 Idents(multimode.integrated) <- multimode.integrated$integratedRNA_snn_res.0.8
 
 suppressWarnings(dir.create('DEG'))
