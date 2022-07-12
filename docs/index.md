@@ -1,6 +1,30 @@
-# cyte-seek 🔬  [![docs](https://github.com/OpenOmics/cyte-seek/workflows/docs/badge.svg)](https://github.com/OpenOmics/cyte-seek/actions) [![GitHub issues](https://img.shields.io/github/issues/OpenOmics/cyte-seek?color=brightgreen)](https://github.com/OpenOmics/cyte-seek/issues)  [![GitHub license](https://img.shields.io/github/license/OpenOmics/cyte-seek)](https://github.com/OpenOmics/cyte-seek/blob/main/LICENSE) 
+<div align="center">
+   
+  <h1 style="font-size: 250%">cyte-seek 🔬</h1>  
+  
+  <b><i>An Awesome Single-cell CITE-sequencing Pipeline</i></b><br>
+  <a href="https://hub.docker.com/repository/docker/skchronicles/chicyte">
+    <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/skchronicles/chicyte">
+  </a>  
+  <a href="https://github.com/OpenOmics/cyte-seek/actions/workflows/main.yaml">
+    <img alt="tests" src="https://github.com/OpenOmics/cyte-seek/workflows/tests/badge.svg">
+  </a>  
+  <a href="https://github.com/OpenOmics/cyte-seek/actions/workflows/docs.yml">
+    <img alt="docs" src="https://github.com/OpenOmics/cyte-seek/workflows/docs/badge.svg">
+  </a><br>  
+  <a href="https://github.com/OpenOmics/cyte-seek/issues">
+    <img alt="GitHub issues" src="https://img.shields.io/github/issues/OpenOmics/cyte-seek?color=brightgreen">
+  </a>
+  <a href="https://github.com/OpenOmics/cyte-seek/blob/main/LICENSE">
+    <img alt="GitHub license" src="https://img.shields.io/github/license/OpenOmics/cyte-seek">
+  </a>
+  
+  <p>
+    This is the home of the pipeline, cyte-seek. Its long-term goals: to accurately perform cell filtering, normalization, clustering, differential expression analysis, and cell type prediction like no pipeline before!
+  </p>
 
-> **_Single-cell CITE-sequencing pipeline_**. This is the home of the pipeline, cyte-seek. Its long-term goals: to accurately perform cell filtering, normalization, clustering, differential expression analysis, and cell type prediction like no pipeline before!
+</div> 
+
 
 ## Overview
 Welcome to cyte-seek's documentation! This guide is the main source of documentation for users that are getting started with the [single-cell CITE-sequencing pipeline](https://github.com/OpenOmics/cyte-seek/). Before getting started, we highly recommend reading through the [usage](usage/run.md) section of each available sub command.
