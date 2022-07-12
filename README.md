@@ -4,10 +4,12 @@
   
   **_An Awesome Single-cell CITE-sequencing Pipeline_**
 
-  [![Docker Pulls](https://img.shields.io/docker/pulls/skchronicles/chicyte)](https://hub.docker.com/repository/docker/skchronicles/chicyte) [![tests](https://github.com/OpenOmics/cyte-seek/workflows/tests/badge.svg)](https://github.com/OpenOmics/cyte-seek/actions/workflows/main.yaml) [![docs](https://github.com/OpenOmics/cyte-seek/workflows/docs/badge.svg)](https://github.com/OpenOmics/cyte-seek/actions/workflows/docs.yml) [![GitHub issues](https://img.shields.io/github/issues/OpenOmics/cyte-seek?color=brightgreen)](https://github.com/OpenOmics/cyte-seek/issues) [![GitHub license](https://img.shields.io/github/license/OpenOmics/cyte-seek)](https://github.com/OpenOmics/cyte-seek/blob/main/LICENSE)  
+  [![Docker Pulls](https://img.shields.io/docker/pulls/skchronicles/chicyte)](https://hub.docker.com/repository/docker/skchronicles/chicyte) [![tests](https://github.com/OpenOmics/cyte-seek/workflows/tests/badge.svg)](https://github.com/OpenOmics/cyte-seek/actions/workflows/main.yaml) [![docs](https://github.com/OpenOmics/cyte-seek/workflows/docs/badge.svg)](https://github.com/OpenOmics/cyte-seek/actions/workflows/docs.yml)<br>[![GitHub issues](https://img.shields.io/github/issues/OpenOmics/cyte-seek?color=brightgreen)](https://github.com/OpenOmics/cyte-seek/issues) [![GitHub license](https://img.shields.io/github/license/OpenOmics/cyte-seek)](https://github.com/OpenOmics/cyte-seek/blob/main/LICENSE)  
   
-  This is the home of the pipeline, cyte-seek. Its long-term goals: to accurately perform cell filtering, normalization, clustering, differential expression analysis, and cell type prediction like no pipeline before!
-</div> 
+  <i>
+    This is the home of the pipeline, cyte-seek. Its long-term goals: to accurately perform cell filtering, normalization, clustering, differential expression analysis, and cell type prediction like no pipeline before!
+  </i>
+</div>
 
 
 ## Overview
