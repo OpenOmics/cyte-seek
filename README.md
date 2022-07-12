@@ -59,6 +59,15 @@ cd cyte-seek/
 # LOCUS users should run
 qrsh -l h_vmem=4G -pe threaded 4
 module load snakemake/6.0.5-Python-3.9.2
+# Download resource bundle (12G)
+# in current working directory
+wget https://hpc.nih.gov/~OpenOmics/cyte-seek/cyte-seek_v1.0.0.tar.gz
+export cyte_refs="$PWD/references"
+mkdir -p "$cyte_refs"
+tar -xvf cyte-seek_v1.0.0.tar.gz -C "$cyte_refs"
+# Update config to use locally
+# downloaded reference files
+sed -i "s@/data/OpenOmics/references@$cyte_refs@g" config/*.json
 # Get usage information
 ./cyte-seek -h
 ```
