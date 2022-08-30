@@ -69,7 +69,8 @@ RUN pip3 install --upgrade pip \
     && pip3 install tensorflow==1.10.1 \
     && pip3 install numpy==1.14 \
     && pip3 install pandas==0.23 \
-    && pip3 install scipy==1.1
+    && pip3 install scipy==1.1 \
+    && pip3 install tables
 
 # Install ACTINN from Github
 # https://github.com/mafeiyang/ACTINN
