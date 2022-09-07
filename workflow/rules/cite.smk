@@ -205,7 +205,8 @@ rule seurat:
 
 rule seurat_rmd_report:
     input:
-        join(workpath, "seurat", "{sample}", "seur_cite_cluster.rds")
+        join(workpath, "seurat", "{sample}", "seur_cite_cluster.rds"),
+        azimuth = join(workpath, "azimuth", "{sample}", "azimuth_prediction.rds")
     output:
         html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html")
     params:
@@ -213,12 +214,13 @@ rule seurat_rmd_report:
         sample = "{sample}",
         outdir = join(workpath, "seurat/{sample}"),
         seurat = join("workflow", "scripts", "seurat_adt_plot.Rmd"),
-        html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html")
+        html = join(workpath, "seurat", "{sample}", "{sample}_seurat.html"),
+        celltype = join(workpath, "azimuth", "{sample}")
     # envmodules: "R/4.1"
     container: config["images"]["cite_base"]
     shell:
         """
-        R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}'), output_file = '{params.html}')"
+        R -e "rmarkdown::render('{params.seurat}', params=list(workdir = '{params.outdir}', sample='{params.sample}', celltype='{params.celltype}'), output_file = '{params.html}')"
         """
 
 
