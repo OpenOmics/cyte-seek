@@ -19,7 +19,7 @@ The **`./cyte-seek`** pipeline is composed several inter-related sub commands to
 
  * [<code>cyte-seek <b>run</b></code>](https://openomics.github.io/cyte-seek/usage/run/): Run the cyte-seek pipeline with your input files.
  * [<code>cyte-seek <b>unlock</b></code>](https://openomics.github.io/cyte-seek/usage/unlock/): Unlocks a previous runs output directory.
- * [<code>cyte-seek <b>cache</b></code>](https://openomics.github.io/cyte-seek/usage/cache/): Cache remote resources locally, coming soon!
+ * [<code>cyte-seek <b>cache</b></code>](https://openomics.github.io/cyte-seek/usage/cache/): Cache software containers locally.
 
 
 **cyte-seek** is a comprehensive single-cell pipeline optimized for CITE-sequencing data. It relies on technologies like [Singularity<sup>1</sup>](https://singularity.lbl.gov/) to maintain the highest-level of reproducibility. The pipeline consists of a series of data processing and quality-control steps orchestrated by [Snakemake<sup>2</sup>](https://snakemake.readthedocs.io/en/stable/), a flexible and scalable workflow management system, to submit jobs to a cluster.
