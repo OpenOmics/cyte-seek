@@ -287,7 +287,7 @@ def parsed_arguments(name, description):
           $ {2} run [--help] [--mode {{slurm,local}}] [--job-name JOB_NAME] \\
                     [ --dry-run] [--silent] [--sif-cache SIF_CACHE] \\
                     [--singularity-cache SINGULARITY_CACHE]  \\
-                    [--tmpdir TMP_DIR] [--threads THREADS] \\
+                    [--tmp-dir TMP_DIR] [--threads THREADS] \\
                     [--pre-rna] [--force-cells] \\
                     [--num-cells NUM_CELLS] \\
                      --input INPUT [INPUT ...] \\
