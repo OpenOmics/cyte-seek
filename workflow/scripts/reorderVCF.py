@@ -1,7 +1,9 @@
 import subprocess, re, argparse
 
+# Requires: samtools in $PATH
+
 def reorderVCF(vcf, bam, output = 'output.vcf'):
-    bam_out = subprocess.Popen("module load samtools; samtools idxstats %s | awk '{print $1}' | grep chr" % bam, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    bam_out = subprocess.Popen("samtools idxstats %s | awk '{print $1}' | grep chr" % bam, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     chromosomes = bam_out.communicate()[0].decode("utf-8").strip().split('\n')
 
