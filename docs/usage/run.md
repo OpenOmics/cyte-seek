@@ -12,7 +12,7 @@ Setting up the cyte-seek pipeline is fast and easy! In its most basic form, <cod
 $ cyte-seek run [--help] [--mode {slurm,uge,local}] [--job-name JOB_NAME] \
       [ --dry-run] [--silent] [--sif-cache SIF_CACHE] \
       [--singularity-cache SINGULARITY_CACHE]  \
-      [--tmpdir TMP_DIR] [--threads THREADS] \
+      [--tmp-dir TMP_DIR] [--threads THREADS] \
       [--pre-rna] [--force-cells] \
       [--num-cells NUM_CELLS] \
        --input INPUT [INPUT ...] \
